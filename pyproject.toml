@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "comitra"
+dynamic = ["version"]
+description = "Search commits across all local git repositories, on every branch, fully offline."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Comitra contributors" }]
+keywords = ["git", "commit", "search", "desktop", "pyside6"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Environment :: X11 Applications :: Qt",
+    "Topic :: Software Development :: Version Control :: Git",
+]
+dependencies = [
+    "PySide6-Essentials>=6.6",
+    "platformdirs>=3.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "pyinstaller>=6.3", "pillow>=10"]
+
+[project.scripts]
+comitra-cli = "comitra.cli:main"
+
+[project.gui-scripts]
+comitra = "comitra.cli:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "comitra.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["comitra*"]
+
+[tool.setuptools.package-data]
+"comitra.ui" = ["resources/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

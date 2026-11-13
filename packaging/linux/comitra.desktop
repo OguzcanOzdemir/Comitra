@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Comitra
+GenericName=Git Commit Search
+GenericName[tr]=Git Commit Arama
+Comment=Search commits across all local git repositories
+Comment[tr]=Bilgisayardaki tüm git repolarında commit ara
+Exec=comitra %F
+Icon=comitra
+Terminal=false
+Categories=Development;RevisionControl;
+Keywords=git;commit;search;
+StartupWMClass=comitra
