@@ -4,7 +4,8 @@
     comitra gui                  start the GUI
     comitra add PATH...          add root folders to scan
     comitra remove PATH...       remove root folders
-    comitra roots                list root folders
+    comitra roots                list the folders that are scanned
+    comitra auto [on|off]        automatic discovery of repositories in the home folder
     comitra update [--fetch] [--full]   scan folders and update the index
     comitra search QUERY [--limit N] [--format table|json|csv] [--group repo|author|day]
     comitra repos                list indexed repositories
@@ -64,18 +65,31 @@ def cmd_remove(args, s: config.Settings) -> int:
 
 
 def cmd_roots(args, s: config.Settings) -> int:
+    from .core.scanner import default_roots
+
+    if s.auto_discover:
+        for r in default_roots():
+            print(f"{r}  (automatic)")
     for r in s.roots:
         print(r)
-    if not s.roots:
-        print("(no folders configured; use: comitra add PATH)")
+    if not s.scan_roots():
+        print("(nothing to scan; use: comitra add PATH or comitra auto on)")
+    return 0
+
+
+def cmd_auto(args, s: config.Settings) -> int:
+    if args.state:
+        s.auto_discover = args.state == "on"
+        s.save()
+    print(f"automatic discovery: {'on' if s.auto_discover else 'off'}")
     return 0
 
 
 def cmd_update(args, s: config.Settings) -> int:
     from .core import gitcmd, service
 
-    if not s.roots:
-        print("No folders configured. Use: comitra add PATH", file=sys.stderr)
+    if not s.scan_roots():
+        print("Nothing to scan. Use: comitra add PATH  or  comitra auto on", file=sys.stderr)
         return 2
     conn = _conn()
     cancel = threading.Event()
@@ -209,7 +223,9 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("paths", nargs="+")
     rm = sub.add_parser("remove", help="remove root folders")
     rm.add_argument("paths", nargs="+")
-    sub.add_parser("roots", help="list root folders")
+    sub.add_parser("roots", help="list the folders that are scanned")
+    au = sub.add_parser("auto", help="turn automatic repository discovery on or off")
+    au.add_argument("state", nargs="?", choices=["on", "off"])
     u = sub.add_parser("update", help="scan folders and update the index")
     u.add_argument("--fetch", action="store_true", help="run 'git fetch --all' before indexing")
     u.add_argument("--full", action="store_true", help="re-check every repository from scratch")
@@ -248,6 +264,6 @@ def main(argv: list[str] | None = None) -> int:
     s = config.Settings.load()
     handlers = {
         None: cmd_gui, "gui": cmd_gui, "add": cmd_add, "remove": cmd_remove, "roots": cmd_roots,
-        "update": cmd_update, "search": cmd_search, "repos": cmd_repos, "stats": cmd_stats, "info": cmd_info,
+        "update": cmd_update, "auto": cmd_auto, "search": cmd_search, "repos": cmd_repos, "stats": cmd_stats, "info": cmd_info,
     }
     return handlers[args.cmd](args, s)

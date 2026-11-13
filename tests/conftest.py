@@ -83,6 +83,7 @@ def settings(tmp_path):
 
     s = Settings()
     s.roots = [str(tmp_path / "work")]
+    s.auto_discover = False
     s.workers = 2
     s.index_files = True
     return s

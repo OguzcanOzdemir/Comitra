@@ -63,7 +63,7 @@ T = {
         "feat_p": "Find the commit that got lost among dozens of repos and hundreds of branches, from a single search box.",
         "features": [
             ("search", "Smart full-text search", "Case- and accent-insensitive, Unicode aware. Exact phrases, prefixes (<code>login*</code>) and exclusions (<code>-wip</code>)."),
-            ("branch", "Every repo, every branch", "Discovers all repositories in your folders automatically. Indexes local and remote branches, tags, submodules and bare repos."),
+            ("branch", "Every repo, every branch", "Finds the git repositories on your computer by itself, no setup needed. Indexes local and remote branches, tags, submodules and bare repos."),
             ("filter", "Powerful filters", "Author and co-author, date ranges and presets, repository, branch (<code>feature/*</code>), hash, changed file, merge commits, time of day and weekday."),
             ("bolt", "Results in milliseconds", "A local SQLite FTS5 index. Smooth scrolling through millions of results, match highlighting and grouping by repo, author or day."),
             ("refresh", "Smart incremental updates", "Only changed repositories are rescanned. Old-dated commits arriving via fetch are never missed. Commits lost to force-pushes are flagged, not deleted."),
@@ -76,7 +76,7 @@ T = {
         "how_p": "Installation and the first index usually take less than a minute.",
         "steps": [
             ("Download and open", "Download the package for your operating system. All you need is git installed."),
-            ("Add a folder", "Pick the folder that holds your projects (e.g. <code>~/projects</code>). Comitra finds and indexes every repository inside."),
+            ("It finds your repos", "On first start Comitra searches your home folder (and other drives on Windows) and indexes every git repository it finds. Projects somewhere else? Add that folder in Settings."),
             ("Search", "Start typing. Results appear as you type. Narrow them down with the filter panel or the query language."),
         ],
         "query_h": "Do everything from the search box",
@@ -219,7 +219,7 @@ def page(lang: str) -> str:
 <meta name="description" content="{escape(t["desc"])}">
 <meta name="keywords" content="{escape(t["keywords"])}">
 <meta name="robots" content="index, follow, max-image-preview:large">
-<meta name="theme-color" content="#2563eb">
+<meta name="theme-color" content="#4f46e5">
 <meta name="color-scheme" content="light dark">
 <link rel="canonical" href="{t["url"]}">
 <meta property="og:type" content="website">
@@ -324,7 +324,7 @@ def main() -> None:
         fh.write(f"User-agent: *\nAllow: /\n\nSitemap: {BASE}sitemap.xml\n")
     manifest = {
         "name": "Comitra", "short_name": "Comitra", "start_url": "./", "display": "browser",
-        "background_color": "#ffffff", "theme_color": "#2563eb",
+        "background_color": "#ffffff", "theme_color": "#4f46e5",
         "icons": [{"src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png"},
                   {"src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png"}],
     }

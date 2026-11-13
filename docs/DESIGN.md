@@ -114,13 +114,29 @@ length-preserving for some letters (e.g. dotted capital I), and it does not matc
   searchable. Repositories outside the configured root folders become `inactive`. Both
   can be removed from the Repositories dialog.
 
-### 2.6 Author identity
+### 2.6 Automatic discovery
+
+With "Find repositories automatically" on (the default), the scan roots are the user's
+home folder plus, on Windows, every fixed drive other than the system drive, in addition
+to any folders the user adds. To keep a whole-home scan fast and free of noise:
+
+- hidden folders (`.config`, `.cache`, `.oh-my-zsh` …) are skipped (configurable),
+- app and media bundles (`*.app`, `*.photoslibrary` …) are skipped,
+- system folders directly below a drive root (`Windows`, `Program Files`, `ProgramData` …)
+  are skipped,
+- the usual dependency and cache folders (`node_modules`, `venv`, `Library`, `AppData` …)
+  are skipped, and the depth is limited (8 by default).
+
+Only directory listings are read, never file contents, so even a large home folder is
+scanned quickly.
+
+### 2.7 Author identity
 
 - `%aN/%aE` are used, so the repository's `.mailmap` is applied.
 - `Co-authored-by:` trailers are parsed. The `author:` filter searches authors and
   co-authors together (name or e-mail, substring match).
 
-### 2.7 Safe and portable git calls
+### 2.8 Safe and portable git calls
 
 `gitcmd` applies these to every call:
 
@@ -140,7 +156,7 @@ length-preserving for some letters (e.g. dotted capital I), and it does not matc
 - In the PyInstaller Linux build, `LD_LIBRARY_PATH` is not passed on to git or to the
   terminal/editor that Comitra launches.
 
-### 2.8 Fetch
+### 2.9 Fetch
 
 Off by default. When enabled:
 
@@ -151,7 +167,7 @@ Off by default. When enabled:
 - Errors are classified as `auth / network / timeout / lock / error`. Indexing continues
   with local data and the problem is shown in the update report.
 
-### 2.9 Concurrency
+### 2.10 Concurrency
 
 - Indexing runs in parallel with a `ThreadPoolExecutor` (git subprocesses don't hold the GIL).
 - All writes go through a single `Writer` object, under a lock, in batched transactions
@@ -160,13 +176,13 @@ Off by default. When enabled:
   connection. "Newest request wins" discards stale search results. Diffs, containing
   branches, statistics and export are `QThreadPool` tasks. The UI never freezes.
 
-### 2.10 Large result lists
+### 2.11 Large result lists
 
 A search returns the ordered ids of all matching commits (up to 2 million), so row counts
 are exact. The table model loads rows in blocks of 200, only when they become visible
 (LRU cache) – true virtual scrolling. Grouping works on the same id list.
 
-### 2.11 Schema evolution
+### 2.12 Schema evolution
 
 `PRAGMA user_version` holds the schema version. Every step appended to `db.MIGRATIONS` is
 applied in order at start-up, inside a transaction. An older build opening a newer

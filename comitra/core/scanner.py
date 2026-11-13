@@ -9,6 +9,7 @@ real path of their *common* git directory.
 from __future__ import annotations
 
 import os
+import sys
 import threading
 from dataclasses import dataclass, field
 from typing import Callable, Iterable
@@ -20,6 +21,49 @@ DEFAULT_EXCLUDES = [
     ".cargo", ".rustup", "site-packages", "$RECYCLE.BIN", "System Volume Information",
     ".Trash", ".Trashes", "Library", "AppData",
 ]
+
+# Skipped only directly below a drive / filesystem root (e.g. C:\Windows).
+SYSTEM_ROOT_DIRS = {
+    "windows", "program files", "program files (x86)", "programdata", "$recycle.bin",
+    "recovery", "perflogs", "system volume information", "$windows.~bt", "$windows.~ws",
+    "msocache", "intel", "amd", "nvidia",
+}
+
+# Bundles/packages that are directories but never contain user repositories.
+PACKAGE_SUFFIXES = (
+    ".app", ".photoslibrary", ".musiclibrary", ".tvlibrary", ".bundle", ".framework",
+    ".xcassets", ".lproj", ".imovielibrary", ".fcpbundle",
+)
+
+
+def _windows_extra_drives() -> list[str]:
+    """Fixed drives other than the system drive (for example D: and E:)."""
+    try:
+        import ctypes
+        import string
+
+        system = os.environ.get("SystemDrive", "C:").upper().rstrip("\\")
+        mask = ctypes.windll.kernel32.GetLogicalDrives()
+        drives = []
+        for i, letter in enumerate(string.ascii_uppercase):
+            if not mask & (1 << i):
+                continue
+            root = f"{letter}:\\"
+            if f"{letter}:" == system:
+                continue
+            if ctypes.windll.kernel32.GetDriveTypeW(root) == 3:  # DRIVE_FIXED
+                drives.append(root)
+        return drives
+    except Exception:
+        return []
+
+
+def default_roots() -> list[str]:
+    """Folders searched automatically: the user's home (and extra fixed drives on Windows)."""
+    roots = [os.path.expanduser("~")]
+    if sys.platform == "win32":
+        roots += _windows_extra_drives()
+    return [r for r in roots if r and os.path.isdir(r)]
 
 
 @dataclass
@@ -91,6 +135,7 @@ def scan(
     max_depth: int = 8,
     follow_symlinks: bool = False,
     include_bare: bool = True,
+    skip_hidden: bool = True,
     cancel: threading.Event | None = None,
     progress: Callable[[str], None] | None = None,
 ) -> ScanReport:
@@ -155,9 +200,16 @@ def scan(
 
             if depth >= max_depth:
                 continue
+            at_fs_root = os.path.dirname(current.rstrip("\\/")) == current.rstrip("\\/") or \
+                os.path.dirname(current) == current
             for entry in entries:
                 name = entry.name
-                if name == ".git" or name.lower() in exclude_names:
+                low = name.lower()
+                if name == ".git" or low in exclude_names:
+                    continue
+                if skip_hidden and name.startswith(".") and not (include_bare and low.endswith(".git")):
+                    continue
+                if low.endswith(PACKAGE_SUFFIXES) or (at_fs_root and low in SYSTEM_ROOT_DIRS):
                     continue
                 try:
                     if not entry.is_dir(follow_symlinks=follow_symlinks):

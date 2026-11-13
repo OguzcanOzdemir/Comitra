@@ -86,6 +86,8 @@ def default_workers() -> int:
 @dataclass
 class Settings:
     roots: list[str] = field(default_factory=list)
+    auto_discover: bool = True   # also search the home folder (+ extra drives on Windows)
+    skip_hidden: bool = True
     exclude_names: list[str] = field(default_factory=lambda: list(DEFAULT_EXCLUDES))
     excluded_paths: list[str] = field(default_factory=list)
     max_depth: int = 8
@@ -119,6 +121,16 @@ class Settings:
     window_state: str = ""
     group_by: str = ""
     first_run_done: bool = False
+
+    def scan_roots(self) -> list[str]:
+        """Folders to scan: automatic locations plus the user's own folders."""
+        from .core.scanner import default_roots
+
+        out: list[str] = []
+        for r in (default_roots() if self.auto_discover else []) + list(self.roots):
+            if r and r not in out:
+                out.append(r)
+        return out
 
     @classmethod
     def load(cls, path: str | None = None) -> "Settings":

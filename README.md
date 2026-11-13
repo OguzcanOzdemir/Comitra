@@ -5,15 +5,17 @@
 🌐 **Website and downloads:** <https://oguzcanozdemir.github.io/Comitra/>
 
 Comitra is a fully offline desktop app for Windows, macOS and Linux. It finds the git
-repositories in the folders you choose, indexes their commits into a local SQLite
+repositories on your computer by itself, indexes their commits into a local SQLite
 database and lets you search them in milliseconds. Your data never leaves your computer.
 
 ![Search screen](docs/img/search-light.png)
 
 ## Features
 
-- **Automatic repository discovery**: regular repos, submodules and bare repos. Linked
-  worktrees are de-duplicated; folders such as `node_modules` and `venv` are skipped.
+- **Automatic repository discovery**: searches your home folder (and other fixed drives
+  on Windows) out of the box; add more folders if you like. Finds regular repos,
+  submodules and bare repos. Linked worktrees are de-duplicated; system folders, hidden
+  folders, app bundles and folders such as `node_modules` and `venv` are skipped.
 - **Every branch**: local and remote branches, tags and detached HEAD.
 - **Full-text search**: case- and accent-insensitive (`cafe` finds `Café`), with exact
   phrases, prefixes and exclusions.
@@ -75,9 +77,11 @@ The `--portable` option and the `COMITRA_HOME=/some/folder` environment variable
 
 ## Usage
 
-1. On first start, click **Add folder** and pick the folder that holds your repositories
-   (for example `~/projects`).
-2. Comitra finds and indexes the repositories. Progress is shown in the status bar.
+1. Start Comitra. On first start it searches your home folder (and, on Windows, other
+   fixed drives) for git repositories and indexes them. Progress is shown in the status bar.
+2. Projects somewhere else, such as an external disk? Add that folder with
+   **File → Add folder…** or in **Settings → Folders**. Automatic discovery can be
+   turned off there as well.
 3. Type in the search box or use the filter panel on the left.
 
 ### Query syntax
@@ -127,7 +131,9 @@ Installed and portable packages include a `comitra-cli` tool (with the AppImage 
 `./Comitra.AppImage cli …`). From source, use `python -m comitra …`.
 
 ```bash
-comitra-cli add ~/projects             # add a folder to scan
+comitra-cli roots                      # folders that are scanned (home folder is automatic)
+comitra-cli add /mnt/work              # add another folder to scan
+comitra-cli auto off                   # turn automatic discovery off (or on)
 comitra-cli update [--fetch] [--full]  # scan and index
 comitra-cli search 'author:alice date:7d payment' --limit 20
 comitra-cli search 'repo:billing' --format csv > results.csv

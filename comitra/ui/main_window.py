@@ -64,7 +64,8 @@ class MainWindow(QMainWindow):
         self._apply_runtime_settings()
         self._update_central()
         self.run_search()
-        if settings.roots and settings.update_on_start:
+        first_run = not self.conn.execute("SELECT 1 FROM repos LIMIT 1").fetchone()
+        if settings.scan_roots() and (settings.update_on_start or first_run):
             QTimer.singleShot(300, lambda: self.start_update(quiet=True))
 
     # -- UI construction ---------------------------------------------------------
@@ -158,15 +159,26 @@ class MainWindow(QMainWindow):
         welcome = QWidget()
         wl = QVBoxLayout(welcome)
         wl.addStretch(1)
-        title = QLabel("<h2>Welcome to Comitra</h2>")
+        title = QLabel("<h2>No git repositories found yet</h2>")
         title.setAlignment(Qt.AlignCenter)
-        text = QLabel("Add the folders that contain your git repositories. Comitra finds every repository inside them and indexes the commits of all branches. Everything stays on this computer.")
+        text = QLabel("Comitra looks for repositories in your home folder automatically (and on other drives on Windows). If your projects live somewhere else, add that folder and Comitra will find every repository inside it. Everything stays on this computer.")
         text.setWordWrap(True)
         text.setAlignment(Qt.AlignCenter)
-        text.setMaximumWidth(560)
+        text.setFixedWidth(520)
+        text.setMinimumHeight(text.heightForWidth(520))
         btn = QPushButton("Add folder")
         btn.setMinimumHeight(36)
         btn.clicked.connect(self.add_folder)
+        from .app import _icon_path
+
+        logo_path = _icon_path()
+        if logo_path:
+            from PySide6.QtGui import QPixmap
+
+            logo = QLabel()
+            logo.setPixmap(QPixmap(logo_path).scaled(96, 96, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            logo.setAlignment(Qt.AlignCenter)
+            wl.addWidget(logo)
         wl.addWidget(title)
         wl.addWidget(text, alignment=Qt.AlignHCenter)
         wl.addSpacing(12)
@@ -408,8 +420,10 @@ class MainWindow(QMainWindow):
             self.status_label.setText(self.repo_count_text)
 
     def _update_central(self) -> None:
-        has = bool(self.settings.roots) or self.conn.execute("SELECT 1 FROM repos LIMIT 1").fetchone()
-        self.stack.setCurrentIndex(0 if has else 1)
+        has_repos = self.conn.execute("SELECT 1 FROM repos LIMIT 1").fetchone() is not None
+        busy = self.index_thread is not None and self.index_thread.isRunning()
+        will_scan = bool(self.settings.scan_roots()) and self.last_report is None
+        self.stack.setCurrentIndex(0 if (has_repos or busy or will_scan) else 1)
 
     # -- searching ----------------------------------------------------------------
     def _query_text_changed(self) -> None:
@@ -608,7 +622,7 @@ class MainWindow(QMainWindow):
         self.start_update()
 
     def start_update(self, fetch: bool | None = None, force_full: bool = False, quiet: bool = False) -> None:
-        if not self.settings.roots:
+        if not self.settings.scan_roots():
             if not quiet:
                 self.add_folder()
             return
@@ -640,7 +654,9 @@ class MainWindow(QMainWindow):
     def _on_index_progress(self, phase: str, done: int, total: int, cur: str) -> None:
         if phase == "scan":
             self.progress.setRange(0, 0)
-            self.status_label.setText("Scanning folders… {cur}".format(cur=_short(cur)))
+            self.status_label.setText("Looking for git repositories… {cur}".format(cur=_short(cur)))
+            if not self.model.rowCount() and not self.conn.execute("SELECT 1 FROM repos LIMIT 1").fetchone():
+                self.info_label.setText("Searching this computer for git repositories. This takes a while only the first time.")
         else:
             self.progress.setRange(0, max(1, total))
             self.progress.setValue(done)
@@ -668,6 +684,8 @@ class MainWindow(QMainWindow):
         self.refresh_side_data()
         self._setup_watcher()
         self._update_central()
+        if self.stack.currentIndex() == 1:
+            self.info_label.setText("")
         if sm.cancelled:
             self.status_label.setText("Update cancelled")
         else:
@@ -777,7 +795,7 @@ class MainWindow(QMainWindow):
         QThreadPool.globalInstance().start(t)
 
     def show_settings(self) -> None:
-        before = (list(self.settings.roots), self.settings.index_files, self.settings.include_tags,
+        before = (list(self.settings.roots), self.settings.auto_discover, self.settings.skip_hidden, self.settings.index_files, self.settings.include_tags,
                   self.settings.include_remotes, list(self.settings.exclude_names), list(self.settings.excluded_paths),
                   self.settings.max_depth, self.settings.include_bare, self.settings.follow_symlinks)
         d = dialogs.SettingsDialog(self.settings, self)
@@ -788,12 +806,12 @@ class MainWindow(QMainWindow):
         theme.apply(self.settings.theme)
         self._apply_runtime_settings()
         self._update_central()
-        after = (list(self.settings.roots), self.settings.index_files, self.settings.include_tags,
+        after = (list(self.settings.roots), self.settings.auto_discover, self.settings.skip_hidden, self.settings.index_files, self.settings.include_tags,
                  self.settings.include_remotes, list(self.settings.exclude_names), list(self.settings.excluded_paths),
                  self.settings.max_depth, self.settings.include_bare, self.settings.follow_symlinks)
         self.model.refresh_rows()
         self.run_search()
-        if before != after and self.settings.roots:
+        if before != after and self.settings.scan_roots():
             self.start_update(quiet=True)
 
     def set_theme(self, mode: str) -> None:

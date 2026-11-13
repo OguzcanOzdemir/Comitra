@@ -37,12 +37,13 @@ def update_index(
     if progress:
         progress("scan", 0, 0, "")
     report = scanner.scan(
-        settings.roots,
+        settings.scan_roots(),
         excludes=settings.exclude_names,
         excluded_paths=settings.excluded_paths,
         max_depth=settings.max_depth,
         follow_symlinks=settings.follow_symlinks,
         include_bare=settings.include_bare,
+        skip_hidden=settings.skip_hidden,
         cancel=cancel,
         progress=(lambda cur: progress("scan", 0, 0, cur)) if progress else None,
     )

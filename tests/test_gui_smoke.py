@@ -43,6 +43,7 @@ def test_main_window_end_to_end(qapp, tmp_path, monkeypatch, make_repo):
 
     s = Settings()
     s.roots = [str(tmp_path / "work")]
+    s.auto_discover = False
     s.save()
     w = MainWindow(Settings.load())
     w.show()

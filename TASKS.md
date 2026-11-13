@@ -6,6 +6,7 @@ Status: ✅ done · 🔜 next · 💡 idea
 
 - ✅ Safe git call layer (UTF-8, no prompts, `GIT_OPTIONAL_LOCKS=0`, timeouts, `--stdin`, no console windows on Windows)
 - ✅ Locating git (PATH + well-known install locations + manual path in settings) and a clear "git not found" message
+- ✅ Automatic discovery: home folder (+ extra fixed drives on Windows) scanned out of the box; system, hidden and bundle folders skipped
 - ✅ Scanner: regular repos, submodules, bare repos; worktree de-duplication; excluded folder names and paths; depth limit; symlink loop protection
 - ✅ SQLite schema, WAL, migration framework (`PRAGMA user_version`)
 - ✅ Case- and accent-insensitive, length-preserving text normalization

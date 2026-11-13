@@ -57,7 +57,17 @@ class SettingsDialog(QDialog):
         # Folders
         w = QWidget()
         f = QVBoxLayout(w)
-        f.addWidget(QLabel("Folders to scan"))
+        from ..core.scanner import default_roots
+
+        self.auto = QCheckBox("Find repositories automatically", checked=settings.auto_discover)
+        auto_where = ", ".join(default_roots()) or "—"
+        hint = QLabel(f"Searches {auto_where} (system folders, hidden folders and app bundles are skipped).")
+        hint.setWordWrap(True)
+        hint.setStyleSheet("color: gray")
+        f.addWidget(self.auto)
+        f.addWidget(hint)
+        f.addSpacing(6)
+        f.addWidget(QLabel("Additional folders to scan"))
         self.roots = QListWidget()
         self.roots.addItems(settings.roots)
         f.addWidget(self.roots)
@@ -80,9 +90,11 @@ class SettingsDialog(QDialog):
         self.max_depth = QSpinBox(minimum=1, maximum=50, value=settings.max_depth)
         self.follow = QCheckBox(checked=settings.follow_symlinks)
         self.bare = QCheckBox(checked=settings.include_bare)
+        self.hidden = QCheckBox(checked=settings.skip_hidden)
         form.addRow("Maximum folder depth", self.max_depth)
         form.addRow("Follow symbolic links", self.follow)
         form.addRow("Include bare repositories", self.bare)
+        form.addRow("Skip hidden folders (.config, .cache …)", self.hidden)
         f.addLayout(form)
         tabs.addTab(w, "Folders")
 
@@ -185,6 +197,8 @@ class SettingsDialog(QDialog):
 
     def apply(self) -> config.Settings:
         s = self.s
+        s.auto_discover = self.auto.isChecked()
+        s.skip_hidden = self.hidden.isChecked()
         s.roots = [self.roots.item(i).text() for i in range(self.roots.count())]
         s.exclude_names = [l.strip() for l in self.excl_names.toPlainText().splitlines() if l.strip()]
         s.excluded_paths = [l.strip() for l in self.excl_paths.toPlainText().splitlines() if l.strip()]
