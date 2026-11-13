@@ -110,6 +110,8 @@ length-preserving for some letters (e.g. dotted capital I), and it does not matc
   de-duplicated by the real path of their common git directory (`commondir`).
 - Submodules (`.git` file → `.git/modules/x`) are indexed as separate repositories.
 - Bare repositories (`HEAD` + `objects` + `refs`) are supported.
+- Moved repositories are recognised by checking, with a single `git cat-file`, whether
+  the new repository contains the root commit recorded for a vanished one.
 - A repository whose folder was deleted becomes `missing` and its commits stay
   searchable. Repositories outside the configured root folders become `inactive`. Both
   can be removed from the Repositories dialog.
@@ -155,6 +157,9 @@ scanned quickly.
   be found, a clear message is shown. A path can be set manually in Settings.
 - In the PyInstaller Linux build, `LD_LIBRARY_PATH` is not passed on to git or to the
   terminal/editor that Comitra launches.
+- `GIT_NO_LAZY_FETCH=1`: in partial clones git would otherwise download missing objects
+  (e.g. to show a diff) - Comitra stays offline.
+- Diffs are read with a size cap; the git process is stopped once the cap is reached.
 
 ### 2.9 Fetch
 
@@ -175,6 +180,12 @@ Off by default. When enabled:
 - UI: indexing runs in a `QThread`, searching in another `QThread` with its own
   connection. "Newest request wins" discards stale search results. Diffs, containing
   branches, statistics and export are `QThreadPool` tasks. The UI never freezes.
+- Change detection polls a cheap fingerprint of `HEAD`, `packed-refs` and `refs/`
+  (file sizes and modification times only) every 20 s in the background. Only repos
+  whose refs changed are re-indexed, quietly. OS file watches are not used: they fire
+  constantly while editors refresh `.git/index`, and on Windows they keep directory
+  handles open, which can stop users from renaming or deleting their folders.
+- A cancelled update never writes the partial result of an interrupted `git rev-list`.
 
 ### 2.11 Large result lists
 

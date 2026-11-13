@@ -5,7 +5,7 @@ from __future__ import annotations
 import html
 import os
 
-from PySide6.QtCore import QThreadPool, Signal
+from PySide6.QtCore import QThreadPool, QTimer, Signal
 from PySide6.QtGui import QColor, QFont, QSyntaxHighlighter, QTextCharFormat
 from PySide6.QtWidgets import (
     QHBoxLayout, QPlainTextEdit, QPushButton, QTabWidget, QTextBrowser, QVBoxLayout, QWidget,
@@ -48,6 +48,9 @@ class DetailPanel(QWidget):
         self._tasks: set = set()
         self._containing: list[str] | None = None
         self._diff_loaded_for: int | None = None
+        # Wait until the selection settles before running git (arrow-key browsing).
+        self._load_timer = QTimer(self, singleShot=True, interval=150)
+        self._load_timer.timeout.connect(self._start_async_loads)
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
@@ -94,6 +97,12 @@ class DetailPanel(QWidget):
 
     def show_commit(self, commit_id: int, terms, date_basis: str) -> None:
         rows = search.fetch_rows(self.conn, [commit_id])
+        if self.row is not None and self.row["id"] == commit_id and commit_id in rows:
+            # Same commit (e.g. results refreshed): refresh the text, keep the
+            # already loaded branches and diff instead of running git again.
+            self.row, self.terms, self.date_basis = rows[commit_id], terms, date_basis
+            self._render()
+            return
         row = rows.get(commit_id)
         if row is None:
             self.show_empty()
@@ -110,8 +119,14 @@ class DetailPanel(QWidget):
             b.setEnabled(exists)
         self._render()
         self.diff.setPlainText("")
-        if exists:
-            self._start(("contains", commit_id), load_containing, row["repo_path"], row["hash"])
+        self._load_timer.start()
+
+    def _start_async_loads(self) -> None:
+        r = self.row
+        if r is None:
+            return
+        if os.path.isdir(r["repo_path"]):
+            self._start(("contains", r["id"]), load_containing, r["repo_path"], r["hash"])
         self._maybe_load_diff()
 
     # -- rendering -----------------------------------------------------------------
@@ -177,6 +192,8 @@ class DetailPanel(QWidget):
         r = self.row
         if r is None or self.tabs.currentWidget() is not self.diff or self._diff_loaded_for == r["id"]:
             return
+        if self._load_timer.isActive():
+            return  # will be loaded when the selection settles
         self._diff_loaded_for = r["id"]
         if not os.path.isdir(r["repo_path"]):
             self.diff.setPlainText("Repository folder is not available.")

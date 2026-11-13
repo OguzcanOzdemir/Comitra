@@ -20,6 +20,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 from dataclasses import dataclass
 from typing import Iterable, Iterator
 
@@ -121,6 +122,10 @@ def _env(extra: dict[str, str] | None = None) -> dict[str, str]:
             "PAGER": "cat",
             "GCM_INTERACTIVE": "never",
             "SSH_ASKPASS_REQUIRE": "never",
+            # Partial clones would otherwise download missing objects on
+            # demand (e.g. for a diff) - Comitra must never touch the network
+            # except for an explicit, user-enabled fetch.
+            "GIT_NO_LAZY_FETCH": "1",
             "LANGUAGE": "C",
         }
     )
@@ -202,6 +207,61 @@ def run(
     if check and proc.returncode != 0:
         raise GitError(args, proc.returncode, err.decode("utf-8", "replace"))
     return out.decode("utf-8", "replace")
+
+
+def run_limited(
+    args: list[str],
+    cwd: str | None = None,
+    max_bytes: int = 2_000_000,
+    timeout: float = 60,
+) -> tuple[str, bool]:
+    """Run git and return at most *max_bytes* of stdout and whether it was cut.
+
+    The process is killed as soon as the limit is reached, so a gigantic diff
+    can never fill the memory.
+    """
+    deadline = None if timeout is None else time.monotonic() + timeout
+    proc = subprocess.Popen(
+        _cmd(args, cwd),
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=_env(),
+        **_popen_kwargs(),
+    )
+    err_chunks: list[bytes] = []
+    t_err = threading.Thread(target=lambda: err_chunks.extend(iter(lambda: proc.stderr.read(8192), b"")), daemon=True)
+    t_err.start()
+    timer = None
+    if deadline is not None:
+        timer = threading.Timer(timeout, lambda: _kill(proc))
+        timer.daemon = True
+        timer.start()
+    out = bytearray()
+    truncated = False
+    try:
+        assert proc.stdout is not None
+        while True:
+            chunk = proc.stdout.read1(1 << 16) if hasattr(proc.stdout, "read1") else proc.stdout.read(1 << 16)
+            if not chunk:
+                break
+            out += chunk
+            if len(out) > max_bytes:
+                truncated = True
+                _kill(proc)
+                break
+    finally:
+        if timer is not None:
+            timer.cancel()
+        rc = proc.wait()
+        t_err.join(timeout=5)
+    if truncated:
+        return bytes(out[:max_bytes]).decode("utf-8", "replace"), True
+    if deadline is not None and time.monotonic() >= deadline and rc != 0:
+        raise GitTimeout(f"git {' '.join(args[:2])} timed out after {timeout}s")
+    if rc != 0:
+        raise GitError(args, rc, b"".join(err_chunks).decode("utf-8", "replace"))
+    return bytes(out).decode("utf-8", "replace"), False
 
 
 @dataclass

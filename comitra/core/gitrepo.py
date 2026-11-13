@@ -127,6 +127,38 @@ def list_refs(path: str, include_tags: bool = True, include_remotes: bool = True
     return refs
 
 
+def ref_stamp(git_dir: str) -> str | None:
+    """Cheap fingerprint of a repository's refs from file metadata only.
+
+    Changes when a branch, tag or HEAD moves (loose refs, packed-refs or
+    reftable), but not when tools like editors refresh the index - so polling
+    it never triggers needless re-indexing. Returns None if unreadable.
+    """
+    import os
+
+    h = hashlib.sha1()
+    try:
+        for name in ("HEAD", "packed-refs"):
+            p = os.path.join(git_dir, name)
+            if os.path.exists(p):
+                st = os.stat(p)
+                h.update(f"{name}:{st.st_mtime_ns}:{st.st_size};".encode())
+        for sub in ("refs", "reftable"):
+            root = os.path.join(git_dir, sub)
+            if not os.path.isdir(root):
+                continue
+            for base, dirs, files in os.walk(root):
+                dirs.sort()
+                for f in sorted(files):
+                    if f.endswith(".lock"):
+                        continue
+                    st = os.stat(os.path.join(base, f))
+                    h.update(f"{base}/{f}:{st.st_mtime_ns}:{st.st_size};".encode("utf-8", "replace"))
+    except OSError:
+        return None
+    return h.hexdigest()
+
+
 def fingerprint(refs: Iterable[Ref], salt: str = "") -> str:
     h = hashlib.sha1(salt.encode())
     for r in sorted(refs, key=lambda r: r.name):
@@ -318,13 +350,14 @@ def changed_files(
 
 def show_commit(path: str, h: str, max_bytes: int = 2_000_000, timeout: float = 60) -> str:
     """Diff of a commit for the detail view (never stored in the database)."""
-    out = gitcmd.run(
-        ["show", "--no-color", "--stat", "--patch", "--find-renames", "--format=", h],
+    out, truncated = gitcmd.run_limited(
+        ["show", "--no-color", "--no-ext-diff", "--stat", "--patch", "--find-renames", "--format=", h],
         cwd=path,
+        max_bytes=max_bytes,
         timeout=timeout,
     )
-    if len(out) > max_bytes:
-        out = out[:max_bytes] + "\n\n… (diff truncated)\n"
+    if truncated:
+        out += "\n\n… (diff truncated – too large to show in full)\n"
     return out
 
 

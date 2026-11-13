@@ -154,6 +154,16 @@ def export_results(fmt: str, ids: list[int], path: str) -> int:
         conn.close()
 
 
+def ref_stamps(repos: list[tuple[int, str]]) -> dict[int, str]:
+    """Compute cheap ref fingerprints for (repo id, git dir) pairs."""
+    out: dict[int, str] = {}
+    for rid, git_dir in repos:
+        st = gitrepo.ref_stamp(git_dir)
+        if st is not None:
+            out[rid] = st
+    return out
+
+
 def author_suggestions() -> list[str]:
     conn = db.connect(config.db_path())
     try:

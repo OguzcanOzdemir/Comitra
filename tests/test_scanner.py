@@ -36,3 +36,15 @@ def test_auto_discovery_off_uses_only_added_folders(tmp_path):
     assert s.scan_roots() == []
     s.roots = [str(tmp_path)]
     assert s.scan_roots() == [str(tmp_path)]
+
+
+def test_user_folders_are_scanned_before_home(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    deep = home / "work"
+    (deep / "a" / "b").mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    s = Settings()
+    s.roots = [str(deep)]
+    roots = s.scan_roots()
+    assert os.path.normpath(roots[0]) == os.path.normpath(str(deep))

@@ -149,7 +149,7 @@ def cmd_search(args, s: config.Settings) -> int:
         w = csv.DictWriter(sys.stdout, fieldnames=export.FIELDS)
         w.writeheader()
         for rec in export._records(conn, res.ids, None):
-            w.writerow(rec)
+            w.writerow({k: export._safe_cell(v) for k, v in rec.items()})
     else:
         rows = search.fetch_rows(conn, res.ids)
         last_group = object()

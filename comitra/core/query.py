@@ -239,7 +239,7 @@ class Query:
 
 
 def _quote(v: str) -> str:
-    if not v or any(ch in v for ch in ' ,"') :
+    if not v or any(ch.isspace() or ch in ',"' for ch in v):
         return '"' + v.replace('"', "") + '"'
     return v
 

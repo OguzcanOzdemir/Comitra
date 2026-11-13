@@ -69,6 +69,37 @@ def _like_escape(s: str) -> str:
     return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
+def match_repos(conn: sqlite3.Connection, values: list[str]) -> list[int]:
+    """Repository ids for ``repo:`` values.
+
+    A value equal to a repository name selects exactly that name (this is what
+    the filter panel produces). Otherwise it matches names containing it, and
+    only a value with a path separator is matched against the full path -
+    every repository lives below the home folder, so matching paths for plain
+    words would select everything.
+    """
+    rows = conn.execute("SELECT id, name, path FROM repos").fetchall()
+    names = {normalize(r[1]) for r in rows}
+    out: list[int] = []
+    for rid, name, path in rows:
+        n = normalize(name)
+        p = normalize(path.replace("\\", "/"))
+        for v in values:
+            vn = normalize(v.replace("\\", "/"))
+            if not vn:
+                continue
+            if vn in names:
+                hit = n == vn
+            elif "/" in vn:
+                hit = vn in p
+            else:
+                hit = vn in n
+            if hit:
+                out.append(rid)
+                break
+    return out
+
+
 # -- branch resolution ---------------------------------------------------------
 
 class BranchResolver:
@@ -128,19 +159,20 @@ class BranchResolver:
             with self._lock:
                 cached = self._cache.get(key)
             if cached is None:
-                cached = self._compute(conn, rid, path, stamp, tips, refs, patterns, warnings)
-                with self._lock:
-                    if len(self._cache) >= self._max:
-                        self._cache.pop(next(iter(self._cache)))
-                    self._cache[key] = cached
+                cached, exact = self._compute(conn, rid, path, stamp, tips, refs, patterns, warnings)
+                if exact:  # never cache the approximate fallback
+                    with self._lock:
+                        if len(self._cache) >= self._max:
+                            self._cache.pop(next(iter(self._cache)))
+                        self._cache[key] = cached
             out.extend(cached)
         return out
 
-    def _compute(self, conn, rid, path, stamp, tips, refs, patterns, warnings) -> list[int]:
+    def _compute(self, conn, rid, path, stamp, tips, refs, patterns, warnings) -> tuple[list[int], bool]:
         if os.path.isdir(path):
             try:
                 id_map = self._ids_for_repo(conn, rid, stamp)
-                return [id_map[h] for h in gitrepo.rev_list(path, list(tips)) if h in id_map]
+                return [id_map[h] for h in gitrepo.rev_list(path, list(tips)) if h in id_map], True
             except (gitcmd.GitError, gitcmd.GitTimeout, gitcmd.GitNotFoundError, OSError) as exc:
                 warnings.append(f"branch filter fallback for {path}: {exc}")
         # Fallback without git: use the ref each commit was discovered from.
@@ -151,7 +183,7 @@ class BranchResolver:
             for r in conn.execute(
                 f"SELECT id FROM commits WHERE repo_id=? AND first_ref IN ({qmarks})", (rid, *names)
             )
-        ]
+        ], False
 
     def clear(self) -> None:
         with self._lock:
@@ -212,11 +244,7 @@ def build_sql(conn: sqlite3.Connection, q: Query, opts: SearchOptions, resolver:
 
     repo_ids: list[int] | None = None
     if q.repos:
-        conds, rparams = [], []
-        for r in q.repos:
-            conds.append("name_norm LIKE ? ESCAPE '\\'")
-            rparams.append(f"%{_like_escape(normalize(r))}%")
-        repo_ids = [row[0] for row in conn.execute(f"SELECT id FROM repos WHERE {' OR '.join(conds)}", rparams)]
+        repo_ids = match_repos(conn, q.repos)
         if repo_ids:
             where.append(f"c.repo_id IN ({','.join(str(i) for i in repo_ids)})")
         else:

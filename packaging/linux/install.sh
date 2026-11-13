@@ -23,6 +23,6 @@ rm -f "$OPT/comitra-portable.txt" "$OPT/install.sh"
 ln -sf "$OPT/Comitra" "$BIN/comitra"
 ln -sf "$OPT/comitra-cli" "$BIN/comitra-cli"
 cp "$HERE/comitra.png" "$PREFIX/icons/hicolor/512x512/apps/comitra.png"
-sed "s|^Exec=.*|Exec=$OPT/Comitra %F|" "$HERE/comitra.desktop" > "$PREFIX/applications/comitra.desktop"
+sed "s|^Exec=.*|Exec=\"$OPT/Comitra\" %F|" "$HERE/comitra.desktop" > "$PREFIX/applications/comitra.desktop"
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$PREFIX/applications" || true
 echo "Comitra installed. Start it from the application menu or run: comitra"

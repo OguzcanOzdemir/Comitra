@@ -121,6 +121,25 @@ def _is_bare_repo(path: str) -> bool:
     )
 
 
+def _is_junction(entry: os.DirEntry) -> bool:
+    """Windows directory junctions (e.g. "Application Data") are links too."""
+    fn = getattr(entry, "is_junction", None)  # Python 3.12+
+    if fn is not None:
+        try:
+            return bool(fn())
+        except OSError:
+            return False
+    if sys.platform == "win32":
+        try:
+            st = entry.stat(follow_symlinks=False)
+            # Only real junctions (IO_REPARSE_TAG_MOUNT_POINT); OneDrive folders
+            # are reparse points too and must still be scanned.
+            return getattr(st, "st_reparse_tag", 0) == 0xA0000003
+        except OSError:
+            return False
+    return False
+
+
 def _real(p: str) -> str:
     try:
         return os.path.normcase(os.path.realpath(p))
@@ -214,7 +233,7 @@ def scan(
                 try:
                     if not entry.is_dir(follow_symlinks=follow_symlinks):
                         continue
-                    if not follow_symlinks and entry.is_symlink():
+                    if not follow_symlinks and (entry.is_symlink() or _is_junction(entry)):
                         continue
                 except OSError:
                     continue

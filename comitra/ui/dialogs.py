@@ -188,11 +188,15 @@ class SettingsDialog(QDialog):
             self.git_path.setText(p)
 
     def _compact(self) -> None:
-        conn = db.connect(config.db_path())
         try:
-            db.vacuum(conn)
-        finally:
-            conn.close()
+            conn = db.connect(config.db_path())
+            try:
+                db.vacuum(conn)
+            finally:
+                conn.close()
+        except Exception as exc:  # e.g. "database is locked" while indexing
+            QMessageBox.warning(self, APP_NAME, f"The database could not be compacted right now:\n{exc}")
+            return
         QMessageBox.information(self, APP_NAME, "Database compacted.")
 
     def apply(self) -> config.Settings:
@@ -233,9 +237,10 @@ class ReposDialog(QDialog):
     search_repo = Signal(str)
     exclude = Signal(list)            # paths
 
-    def __init__(self, conn, parent=None):
+    def __init__(self, conn, parent=None, is_busy=None):
         super().__init__(parent)
         self.conn = conn
+        self.is_busy = is_busy or (lambda: False)
         self.setWindowTitle("Repositories")
         self.resize(900, 520)
         self.table = _table(["Name", "Commits", "Status", "Last indexed", "Path"])
@@ -303,6 +308,9 @@ class ReposDialog(QDialog):
     def _remove(self, exclude: bool = False) -> bool:
         sel = self._selected()
         if not sel:
+            return False
+        if self.is_busy():
+            QMessageBox.information(self, APP_NAME, "Please wait until the current index update has finished.")
             return False
         if QMessageBox.question(self, APP_NAME, "Remove {n} repositories and their commits from the index?".format(n=len(sel))) != QMessageBox.Yes:
             return False

@@ -67,7 +67,7 @@ def fetch_repo(path: str, timeout: float = 60, retries: int = 1) -> FetchResult:
         except gitcmd.GitTimeout:
             return FetchResult(False, "timeout", f"fetch timed out after {int(timeout)}s")
         except gitcmd.GitError as exc:
-            if "no-write-fetch-head" in exc.stderr and "unknown option" in exc.stderr:
+            if "--no-write-fetch-head" in args and "no-write-fetch-head" in exc.stderr and "unknown option" in exc.stderr:
                 args.remove("--no-write-fetch-head")  # git < 2.29
                 continue
             reason = classify(exc.stderr)

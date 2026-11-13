@@ -42,7 +42,7 @@ Status: ✅ done · 🔜 next · 💡 idea
 - ✅ Update report (updated, unchanged, error, missing, fetch problems)
 - ✅ Settings, Repositories, Saved searches and Statistics dialogs
 - ✅ Recent searches
-- ✅ Automatic updates on start-up, on a schedule and via file-system watching
+- ✅ Automatic updates on start-up, on a schedule and when a branch moves (background polling of ref files; no OS file watches)
 - ✅ Light, dark and system themes
 - ✅ Keyboard shortcuts and query syntax help
 - ✅ First-run welcome screen

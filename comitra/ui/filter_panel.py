@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..core.query import DateFilter, Query, _split_values
+from ..core.query import HEX_RE, DateFilter, Query, _split_values
 
 DATE_CHOICES = [
     ("", "Any time"), ("today", "Today"), ("yesterday", "Yesterday"), ("7d", "Last 7 days"),
@@ -42,6 +42,7 @@ class FilterPanel(QScrollArea):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setMinimumWidth(260)
         self._updating = False
+        self._date_dirty = False  # True once the user touched the date widgets
         self._debounce = QTimer(self, singleShot=True, interval=300)
         self._debounce.timeout.connect(self._emit)
         inner = QWidget()
@@ -87,8 +88,8 @@ class FilterPanel(QScrollArea):
         gl.addRow(self.lbl_from, self.date_from)
         gl.addRow(self.lbl_to, self.date_to)
         self.date_combo.currentIndexChanged.connect(self._date_mode_changed)
-        self.date_from.dateChanged.connect(self._changed_now)
-        self.date_to.dateChanged.connect(self._changed_now)
+        self.date_from.dateChanged.connect(self._date_edited)
+        self.date_to.dateChanged.connect(self._date_edited)
         lay.addWidget(g)
 
         # Repos ---------------------------------------------------------------------
@@ -207,6 +208,7 @@ class FilterPanel(QScrollArea):
     # -- query <-> widgets ---------------------------------------------------------
     def set_query(self, q: Query) -> None:
         self._updating = True
+        self._date_dirty = False
         try:
             self.author_list.clear()
             for a in q.authors:
@@ -254,8 +256,9 @@ class FilterPanel(QScrollArea):
         q = base.copy()
         q.authors = [self.author_list.item(i).text() for i in range(self.author_list.count())]
         key = self.date_combo.currentData()
-        q.after = q.before = None
-        if not key:
+        if not self._date_dirty:
+            pass  # keep the typed date/after/before exactly as they are
+        elif not key:
             q.date = None
         elif key == "single":
             d = _pydate(self.date_from.date())
@@ -267,9 +270,11 @@ class FilterPanel(QScrollArea):
             q.date = DateFilter(start=a, end=b)
         else:
             q.date = DateFilter(preset=key)
+        if self._date_dirty:
+            q.after = q.before = None
         q.repos = self._checked_repos()
         q.branches = _split_values(self.branch_edit.text())
-        q.hashes = [h.lower() for h in _split_values(self.hash_edit.text()) if h.strip()]
+        q.hashes = [h.lower() for h in _split_values(self.hash_edit.text()) if HEX_RE.match(h.strip())]
         q.files = _split_values(self.file_edit.text())
         q.merge = self.merge_combo.currentData()
         q.hours = None
@@ -283,6 +288,7 @@ class FilterPanel(QScrollArea):
 
     def reset(self) -> None:
         self.set_query(Query())
+        self._date_dirty = True
         self._changed_now()
 
     # -- internals ---------------------------------------------------------------
@@ -330,7 +336,13 @@ class FilterPanel(QScrollArea):
         self.lbl_from.setText("Day" if key == "single" else "From")
         self.date_to.setVisible(show_to)
         self.lbl_to.setVisible(show_to)
-        if emit:
+        if emit and not self._updating:
+            self._date_dirty = True
+            self._changed_now()
+
+    def _date_edited(self, *_):
+        if not self._updating:
+            self._date_dirty = True
             self._changed_now()
 
     def _hours_changed(self, *_):

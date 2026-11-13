@@ -51,6 +51,16 @@ def _records(conn: sqlite3.Connection, ids: list[int], progress: Callable[[int],
             progress(min(i + 1000, len(ids)))
 
 
+_FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _safe_cell(value):
+    """Commit data comes from other people: stop spreadsheet apps from running it as a formula."""
+    if isinstance(value, str) and value.startswith(_FORMULA_START):
+        return "'" + value
+    return value
+
+
 def export_csv(conn: sqlite3.Connection, ids: list[int], path: str, progress=None) -> int:
     n = 0
     # utf-8-sig so that Excel on Windows detects UTF-8 correctly.
@@ -58,7 +68,7 @@ def export_csv(conn: sqlite3.Connection, ids: list[int], path: str, progress=Non
         w = csv.DictWriter(fh, fieldnames=FIELDS)
         w.writeheader()
         for rec in _records(conn, ids, progress):
-            w.writerow(rec)
+            w.writerow({k: _safe_cell(v) for k, v in rec.items()})
             n += 1
     return n
 

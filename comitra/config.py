@@ -39,14 +39,51 @@ def app_dir() -> str:
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+_portable_cache: tuple | None = None
+
+
+def _writable_dir(path: str) -> bool:
+    try:
+        os.makedirs(path, exist_ok=True)
+        probe = os.path.join(path, ".comitra-write-test")
+        with open(probe, "w", encoding="utf-8") as fh:
+            fh.write("ok")
+        os.remove(probe)
+        return True
+    except OSError:
+        return False
+
+
 def portable_dir() -> str | None:
+    """Data folder in portable mode, or None for the normal per-user folders.
+
+    If the portable folder is not writable (e.g. the portable package was
+    unzipped into Program Files, or macOS runs it from a read-only translocated
+    path) Comitra falls back to the per-user folders instead of failing.
+    """
+    global _portable_cache
     env = os.environ.get("COMITRA_HOME")
     if env:
         return os.path.abspath(os.path.expanduser(env))
+    key = (_forced_portable, app_dir())
+    if _portable_cache is not None and _portable_cache[0] == key:
+        return _portable_cache[1]
     base = app_dir()
+    result = None
     if _forced_portable or os.path.isfile(os.path.join(base, PORTABLE_MARKER)):
-        return os.path.join(base, "comitra-data")
-    return None
+        cand = os.path.join(base, "comitra-data")
+        if _writable_dir(cand):
+            result = cand
+    _portable_cache = (key, result)
+    return result
+
+
+def portable_requested() -> bool:
+    return _forced_portable or os.path.isfile(os.path.join(app_dir(), PORTABLE_MARKER))
+
+
+def log_path() -> str:
+    return os.path.join(data_dir(), "comitra.log")
 
 
 def is_portable() -> bool:
@@ -127,7 +164,9 @@ class Settings:
         from .core.scanner import default_roots
 
         out: list[str] = []
-        for r in (default_roots() if self.auto_discover else []) + list(self.roots):
+        # User folders first: each gets the full depth limit even when it
+        # lies inside the home folder (the scanner never visits a folder twice).
+        for r in list(self.roots) + (default_roots() if self.auto_discover else []):
             if r and r not in out:
                 out.append(r)
         return out

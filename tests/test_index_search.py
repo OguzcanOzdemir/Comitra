@@ -232,3 +232,59 @@ def test_fetch_failure_keeps_indexing(conn, settings, make_repo):
     assert res.fetch is not None and not res.fetch.ok
     assert res.status == "updated"
     assert find(conn, "local")[0] == ["local"]
+
+
+def test_cancel_during_reachability_pass_loses_nothing(conn, settings, make_repo, monkeypatch):
+    """A cancelled full reachability pass must not mark (or delete) commits."""
+    import threading
+
+    from comitra.core import gitrepo, indexer
+
+    settings.keep_unreachable = False
+    r = make_repo()
+    for i in range(5):
+        r.commit(f"c{i}")
+    run(conn, settings)
+    cancel = threading.Event()
+    real = gitrepo.rev_list
+
+    def partial(path, include, exclude=(), cancel=None):
+        it = real(path, include, exclude)
+        first = next(iter(it))
+        cancel_event.set()  # user hits "cancel" while rev-list is streaming
+        return iter([first])
+
+    cancel_event = cancel
+    monkeypatch.setattr(gitrepo, "rev_list", partial)
+    writer = indexer.Writer(conn)
+    rows = conn.execute("SELECT * FROM repos").fetchall()
+    opts = settings.index_options(force_full=True)
+    summary = indexer.index_repos(writer, rows, opts, cancel=cancel)
+    assert summary.results[0].status == "cancelled"
+    assert conn.execute("SELECT COUNT(*) FROM commits WHERE reachable=1").fetchone()[0] == 5
+
+
+def test_repo_filter_exact_name_and_path_rules(conn, settings, make_repo):
+    make_repo("alice/api").commit("in api")
+    make_repo("alice/billing-api").commit("in billing")
+    make_repo("bob/web").commit("in web")
+    run(conn, settings)
+    # exact repository name (what the filter panel produces) selects only that repo
+    assert find(conn, "repo:api")[0] == ["in api"]
+    # a partial name still matches by substring
+    assert set(find(conn, "repo:bill")[0]) == {"in billing"}
+    # plain words are not matched against the path (everything is below home)
+    assert find(conn, "repo:alice")[0] == []
+    # a value with a path separator matches the path
+    assert set(find(conn, "repo:alice/")[0]) == {"in api", "in billing"}
+
+
+def test_csv_export_neutralises_formulas(conn, settings, make_repo, tmp_path):
+    r = make_repo()
+    r.commit('=HYPERLINK("http://evil.example","click")')
+    run(conn, settings)
+    _, res = find(conn, "")
+    out = tmp_path / "x.csv"
+    export.export_csv(conn, res.ids, str(out))
+    text = out.read_text(encoding="utf-8-sig")
+    assert "'=HYPERLINK" in text

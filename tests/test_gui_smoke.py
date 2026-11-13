@@ -74,3 +74,24 @@ def test_main_window_end_to_end(qapp, tmp_path, monkeypatch, make_repo):
     for mode in ("dark", "light", "system"):
         w.set_theme(mode)
     w.close()
+
+
+def test_filter_panel_keeps_typed_dates(qapp):
+    """Changing an unrelated filter must not rewrite a typed date filter."""
+    from comitra.core.query import parse
+    from comitra.ui.filter_panel import FilterPanel
+
+    p = FilterPanel()
+    p.set_query(parse("date:2026-10-01..2026-10-31"))
+    p.set_query(parse("after:2026-11-01 fix"))          # open-ended, typed by the user
+    p.merge_combo.setCurrentIndex(p.merge_combo.findData("hide"))
+    q = p.apply_to(parse("after:2026-11-01 fix"))
+    assert q.after.isoformat() == "2026-11-01" and q.before is None and q.date is None
+    assert q.merge == "hide"
+    # a date chosen in the panel replaces it
+    p.date_combo.setCurrentIndex(p.date_combo.findData("7d"))
+    q = p.apply_to(q)
+    assert q.date.preset == "7d" and q.after is None
+    # invalid hashes typed in the panel are ignored instead of breaking the query
+    p.hash_edit.setText("zzz, A1B2C3D")
+    assert p.apply_to(q).hashes == ["a1b2c3d"]

@@ -99,7 +99,7 @@ class Writer:
         found = list(found)
         with self.lock:
             c = self.conn
-            known = {r["path"]: r for r in c.execute("SELECT * FROM repos")}
+            known = {os.path.normcase(r["path"]): r for r in c.execute("SELECT * FROM repos")}
             missing = [r for r in known.values() if not os.path.exists(r["path"])]
             for r in missing:
                 if r["status"] != "missing":
@@ -109,36 +109,43 @@ class Writer:
                 name = os.path.basename(path.rstrip("/\\")) or path
                 if f.is_bare and name.endswith(".git"):
                     name = name[:-4] or name
-                if path in known:
+                row = known.get(os.path.normcase(path))
+                if row is not None:
                     c.execute(
-                        "UPDATE repos SET git_dir=?, is_bare=?, status=CASE WHEN status IN ('missing','inactive') THEN 'ok' ELSE status END WHERE path=?",
-                        (f.git_dir, int(f.is_bare), path),
+                        "UPDATE repos SET git_dir=?, is_bare=?, status=CASE WHEN status IN ('missing','inactive') THEN 'ok' ELSE status END WHERE id=?",
+                        (f.git_dir, int(f.is_bare), row["id"]),
                     )
                     continue
                 moved_from = None
-                if missing:
-                    rc = gitrepo.root_commit(path)
-                    if rc:
+                with_roots = [m for m in missing if m["root_commit"]]
+                if with_roots:
+                    # A moved repository still contains the root commit we saw
+                    # before. One cat-file call answers that for all candidates.
+                    try:
+                        present = gitrepo.existing_objects(path, {m["root_commit"] for m in with_roots})
+                    except (gitcmd.GitError, gitcmd.GitTimeout, OSError):
+                        present = set()
+                    cands = [m for m in with_roots if m["root_commit"] in present]
+                    if len(cands) > 1:
                         url = gitrepo.remote_url(path)
-                        cands = [m for m in missing if m["root_commit"] == rc]
-                        if len(cands) > 1 and url:
+                        if url:
                             cands = [m for m in cands if m["remote_url"] == url] or cands
-                        if cands:
-                            moved_from = cands[0]
+                    if cands:
+                        moved_from = cands[0]
                 if moved_from is not None:
                     c.execute(
                         "UPDATE repos SET path=?, name=?, name_norm=?, git_dir=?, is_bare=?, status='ok' WHERE id=?",
                         (path, name, normalize(name + " " + path), f.git_dir, int(f.is_bare), moved_from["id"]),
                     )
-                    missing.remove(moved_from)
+                    missing = [m for m in missing if m["id"] != moved_from["id"]]
                 else:
                     c.execute(
                         "INSERT INTO repos(path, name, name_norm, git_dir, is_bare, status, added_at) VALUES (?,?,?,?,?, 'new', ?)",
                         (path, name, normalize(name + " " + path), f.git_dir, int(f.is_bare), now),
                     )
-            found_paths = {os.path.normpath(f.path) for f in found}
+            found_paths = {os.path.normcase(os.path.normpath(f.path)) for f in found}
             rows = c.execute("SELECT * FROM repos ORDER BY name COLLATE NOCASE").fetchall()
-            return [r for r in rows if r["path"] in found_paths]
+            return [r for r in rows if os.path.normcase(r["path"]) in found_paths]
 
     def mark_inactive_except(self, active_ids: set[int]) -> None:
         with self.lock:
@@ -281,9 +288,10 @@ class Writer:
         gone = [r[0] for r in rows if r[0] not in reachable]
         return self.mark_unreachable(repo_id, gone, keep)
 
-    def repo_hashes(self, repo_id: int) -> list[str]:
+    def repo_hashes(self, repo_id: int, reachable_only: bool = False) -> list[str]:
+        sql = "SELECT hash FROM commits WHERE repo_id=?" + (" AND reachable=1" if reachable_only else "")
         with self.lock:
-            return [r[0] for r in self.conn.execute("SELECT hash FROM commits WHERE repo_id=?", (repo_id,))]
+            return [r[0] for r in self.conn.execute(sql, (repo_id,))]
 
     def write_files(self, repo_id: int, items: list[tuple[str, list[str]]]) -> None:
         if not items:
@@ -387,16 +395,23 @@ def _index_one(
             res.status = "cancelled"
             return res
 
-        # Reachability bookkeeping.
+        # Reachability bookkeeping. A cancelled rev-list stops early without an
+        # error, so the (partial) result must never be written.
         if opts.force_full or lost_tips:
             reachable = set(gitrepo.rev_list(path, sorted(new_tips), cancel=cancel))
+            if cancel.is_set():
+                res.status = "cancelled"
+                return res
             res.unreachable = writer.reset_reachability(rid, reachable, opts.keep_unreachable)
         elif alive_old - new_tips:
             gone = list(gitrepo.rev_list(path, sorted(alive_old - new_tips), sorted(new_tips), cancel=cancel))
+            if cancel.is_set():
+                res.status = "cancelled"
+                return res
             res.unreachable = writer.mark_unreachable(rid, gone, opts.keep_unreachable)
 
         if opts.index_files:
-            targets = writer.repo_hashes(rid) if need_files else new_hashes
+            targets = writer.repo_hashes(rid, reachable_only=True) if need_files else new_hashes
             items: list[tuple[str, list[str]]] = []
             for h, files in gitrepo.changed_files(path, targets, cancel=cancel):
                 items.append((h, files))

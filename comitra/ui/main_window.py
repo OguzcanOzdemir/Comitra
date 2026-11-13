@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import time
 
-from PySide6.QtCore import QByteArray, QFileSystemWatcher, QItemSelectionModel, Qt, QThreadPool, QTimer
+from PySide6.QtCore import QByteArray, QItemSelectionModel, Qt, QThreadPool, QTimer
 from PySide6.QtGui import QAction, QActionGroup, QGuiApplication, QKeySequence
 from PySide6.QtWidgets import (
     QAbstractItemView, QComboBox, QDockWidget, QFileDialog, QHBoxLayout, QHeaderView, QLabel, QLineEdit,
@@ -19,9 +19,10 @@ from . import actions, dialogs, theme
 from .detail_panel import DetailPanel
 from .filter_panel import FilterPanel
 from .results_model import COL_AUTHOR, COL_BRANCH, COL_DATE, COL_HASH, COL_MSG, COL_REPO, HighlightDelegate, ResultsModel
-from .workers import IndexThread, SearchThread, Task, author_suggestions, export_results
+from .workers import IndexThread, SearchThread, Task, author_suggestions, export_results, ref_stamps
 
-MAX_WATCHED = 500
+MAX_WATCHED = 2000
+WATCH_INTERVAL_MS = 20_000
 
 
 class MainWindow(QMainWindow):
@@ -35,6 +36,9 @@ class MainWindow(QMainWindow):
         self.index_thread: IndexThread | None = None
         self.pending_watch_ids: set[int] = set()
         self.pending_full_update = False
+        self._ref_stamps: dict[int, str] = {}
+        self._watch_busy = False
+        self._index_background = False
         self.last_report = None
         self._tasks: set = set()
         self._watch_map: dict[str, int] = {}
@@ -52,12 +56,10 @@ class MainWindow(QMainWindow):
         self.search_timer.timeout.connect(self._query_text_changed)
         self.recent_timer = QTimer(self, singleShot=True, interval=2500)
         self.recent_timer.timeout.connect(self._remember_recent)
-        self.watch_timer = QTimer(self, singleShot=True, interval=4000)
-        self.watch_timer.timeout.connect(self._flush_watch)
+        self.watch_timer = QTimer(self, interval=WATCH_INTERVAL_MS)
+        self.watch_timer.timeout.connect(self._poll_refs)
         self.auto_timer = QTimer(self)
         self.auto_timer.timeout.connect(lambda: self.start_update(quiet=True))
-        self.watcher = QFileSystemWatcher(self)
-        self.watcher.directoryChanged.connect(self._on_repo_changed)
 
         self._restore_window()
         self.refresh_side_data()
@@ -355,42 +357,47 @@ class MainWindow(QMainWindow):
         self._setup_watcher()
 
     def _setup_watcher(self) -> None:
-        old = self.watcher.directories()
-        if old:
-            self.watcher.removePaths(old)
-        self._watch_map = {}
-        if not self.settings.watch_repos:
+        """Poll ref fingerprints in the background (no OS file watches).
+
+        Polling stat() data of HEAD/refs/packed-refs is cheap, holds no
+        directory handles (Windows would otherwise block deleting or renaming
+        watched folders) and ignores index churn caused by editors.
+        """
+        if self.settings.watch_repos:
+            if not self.watch_timer.isActive():
+                self.watch_timer.start()
+        else:
+            self.watch_timer.stop()
+            self._ref_stamps.clear()
+
+    def _poll_refs(self) -> None:
+        if self._watch_busy or (self.index_thread is not None and self.index_thread.isRunning()):
             return
         rows = self.conn.execute(
-            "SELECT id, git_dir FROM repos WHERE status IN ('ok','new','error') AND git_dir IS NOT NULL ORDER BY last_indexed_at DESC LIMIT ?",
+            "SELECT id, git_dir FROM repos WHERE status IN ('ok','error') AND git_dir IS NOT NULL "
+            "ORDER BY last_indexed_at DESC LIMIT ?",
             (MAX_WATCHED,),
         ).fetchall()
-        paths = []
-        for rid, gd in rows:
-            if gd and os.path.isdir(gd):
-                self._watch_map[os.path.normpath(gd)] = rid
-                paths.append(gd)
-                heads = os.path.join(gd, "refs", "heads")
-                if os.path.isdir(heads):
-                    self._watch_map[os.path.normpath(heads)] = rid
-                    paths.append(heads)
-        if paths:
-            self.watcher.addPaths(paths)
+        if not rows:
+            return
+        self._watch_busy = True
+        t = Task("stamps", ref_stamps, [(r[0], r[1]) for r in rows])
+        t.signals.done.connect(self._on_ref_stamps)
+        t.signals.failed.connect(lambda *_: setattr(self, "_watch_busy", False))
+        self._keep(t)
+        QThreadPool.globalInstance().start(t)
 
-    def _on_repo_changed(self, path: str) -> None:
-        rid = self._watch_map.get(os.path.normpath(path))
-        if rid is not None:
-            self.pending_watch_ids.add(rid)
-            self.watch_timer.start()
-
-    def _flush_watch(self) -> None:
-        if not self.pending_watch_ids:
+    def _on_ref_stamps(self, _key, stamps: dict) -> None:
+        self._watch_busy = False
+        changed = {rid for rid, st in stamps.items() if rid in self._ref_stamps and self._ref_stamps[rid] != st}
+        self._ref_stamps.update(stamps)
+        if not changed or not self.settings.watch_repos:
             return
         if self.index_thread is not None and self.index_thread.isRunning():
-            self.watch_timer.start()
+            self.pending_watch_ids |= changed
             return
-        ids, self.pending_watch_ids = self.pending_watch_ids, set()
-        self._start_thread(IndexThread(self.settings, mode="known", fetch=False, repo_ids=ids), quiet=True)
+        self._start_thread(IndexThread(self.settings, mode="known", fetch=False, repo_ids=changed),
+                           quiet=True, background=True)
 
     # -- data for side widgets ------------------------------------------------------
     def refresh_side_data(self) -> None:
@@ -617,7 +624,7 @@ class MainWindow(QMainWindow):
         d = os.path.normpath(d)
         if d not in self.settings.roots:
             self.settings.roots.append(d)
-            self.settings.save()
+            self.save_settings()
         self._update_central()
         self.start_update()
 
@@ -627,8 +634,13 @@ class MainWindow(QMainWindow):
                 self.add_folder()
             return
         if self.index_thread is not None and self.index_thread.isRunning():
+            if self._index_background and not force_full and not fetch:
+                self.pending_full_update = True  # a quiet re-check is running; scan right after it
+                return
+            # Run again right after the current update so new folders/settings apply.
+            self.pending_full_update = True
             if not quiet:
-                self.statusBar().showMessage("An update is already running.", 4000)
+                self.statusBar().showMessage("An update is running; your change will be applied right after it.", 5000)
             return
         self._start_thread(IndexThread(self.settings, mode="scan", force_full=force_full, fetch=fetch), quiet=quiet)
 
@@ -638,13 +650,15 @@ class MainWindow(QMainWindow):
             return
         self._start_thread(IndexThread(self.settings, mode="known", force_full=True, repo_ids=ids), quiet=False)
 
-    def _start_thread(self, th: IndexThread, quiet: bool) -> None:
+    def _start_thread(self, th: IndexThread, quiet: bool, background: bool = False) -> None:
         self.index_thread = th
-        th.progress.connect(self._on_index_progress)
-        th.done.connect(lambda rep, err, q=quiet: self._on_index_done(rep, err, q))
-        self.progress.setVisible(True)
-        self.progress.setRange(0, 0)
-        self.cancel_btn.setVisible(True)
+        self._index_background = background
+        if not background:
+            th.progress.connect(self._on_index_progress)
+            self.progress.setVisible(True)
+            self.progress.setRange(0, 0)
+            self.cancel_btn.setVisible(True)
+        th.done.connect(lambda rep, err, q=quiet, bg=background: self._on_index_done(rep, err, q, bg))
         th.start()
 
     def cancel_update(self) -> None:
@@ -662,12 +676,19 @@ class MainWindow(QMainWindow):
             self.progress.setValue(done)
             self.status_label.setText("Indexing {done}/{total}: {cur}".format(done=done, total=total, cur=cur))
 
-    def _on_index_done(self, report, err: str, quiet: bool) -> None:
+    def _on_index_done(self, report, err: str, quiet: bool, background: bool = False) -> None:
         self.progress.setVisible(False)
         self.cancel_btn.setVisible(False)
         th, self.index_thread = self.index_thread, None
+        self._index_background = False
         if th is not None:
             th.deleteLater()
+        QTimer.singleShot(0, self._run_pending_updates)
+        if background and not err:
+            sm = report.summary
+            changed = sm.new_commits or sm.count("updated") or any(r.unreachable for r in sm.results)
+            if not changed:
+                return  # quiet ref re-check found nothing new: leave the UI alone
         if err == "git-not-found":
             self.status_label.setText("git was not found")
             QMessageBox.warning(self, "git was not found",
@@ -678,7 +699,8 @@ class MainWindow(QMainWindow):
             if not quiet:
                 QMessageBox.warning(self, "Error", err)
             return
-        self.last_report = report
+        if not background or self.last_report is None:
+            self.last_report = report
         sm = report.summary
         self.search_thread.worker.resolver.clear()
         self.refresh_side_data()
@@ -704,6 +726,25 @@ class MainWindow(QMainWindow):
         if not quiet and (problems or (report.scan.repos and len(sm.results) <= 200 and sm.count("updated"))):
             if problems:
                 self.show_report()
+
+    def _run_pending_updates(self) -> None:
+        if self.index_thread is not None and self.index_thread.isRunning():
+            return
+        if self.pending_full_update:
+            self.pending_full_update = False
+            self.start_update(quiet=True)
+        elif self.pending_watch_ids:
+            ids, self.pending_watch_ids = self.pending_watch_ids, set()
+            self._start_thread(IndexThread(self.settings, mode="known", fetch=False, repo_ids=ids),
+                               quiet=True, background=True)
+
+    def save_settings(self) -> bool:
+        try:
+            self.settings.save()
+            return True
+        except OSError as exc:
+            QMessageBox.warning(self, APP_NAME, f"Settings could not be saved:\n{exc}")
+            return False
 
     def show_report(self) -> None:
         if self.last_report is not None:
@@ -802,8 +843,9 @@ class MainWindow(QMainWindow):
         if d.exec() != dialogs.QDialog.Accepted:
             return
         d.apply()
-        self.settings.save()
+        self.save_settings()
         theme.apply(self.settings.theme)
+        self.info_label.setStyleSheet(f"color:{theme.muted_color()}")
         self._apply_runtime_settings()
         self._update_central()
         after = (list(self.settings.roots), self.settings.auto_discover, self.settings.skip_hidden, self.settings.index_files, self.settings.include_tags,
@@ -819,10 +861,11 @@ class MainWindow(QMainWindow):
         theme.apply(mode)
         self.info_label.setStyleSheet(f"color:{theme.muted_color()}")
         self.model.refresh_rows()
-        self.settings.save()
+        self.save_settings()
 
     def show_repos(self) -> None:
-        d = dialogs.ReposDialog(self.conn, self)
+        d = dialogs.ReposDialog(
+            self.conn, self, is_busy=lambda: self.index_thread is not None and self.index_thread.isRunning())
         d.reindex.connect(self.reindex_repos)
         d.removed.connect(lambda: (self.search_thread.worker.resolver.clear(), self.refresh_side_data(), self.run_search()))
         d.search_repo.connect(lambda name: self._add_filter("repos", name))
@@ -833,7 +876,7 @@ class MainWindow(QMainWindow):
         for p in paths:
             if p not in self.settings.excluded_paths:
                 self.settings.excluded_paths.append(p)
-        self.settings.save()
+        self.save_settings()
 
     def show_stats(self) -> None:
         ids = list(self.last_result.ids) if self.last_result and not self.query.is_empty() else None
