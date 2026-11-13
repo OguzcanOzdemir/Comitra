@@ -1,6 +1,5 @@
-"""Generate the GitHub Pages site (site/index.html and site/en/index.html).
+"""Generate the GitHub Pages site (site/index.html, sitemap, robots, manifest).
 
-Both languages come from one template so they never drift apart.
 Run after editing:  python tools/build_site.py
 """
 
@@ -44,105 +43,14 @@ def icon(name: str) -> str:
 
 
 T = {
-    "tr": {
+    "en": {
         "path": "index.html",
         "url": BASE,
-        "locale": "tr_TR",
-        "title": "Comitra – Tüm Git Repolarında Commit Arama Programı (Ücretsiz, Windows · macOS · Linux)",
-        "desc": "Comitra, bilgisayarınızdaki tüm git repolarında ve tüm branch'lerde commit mesajı, yazar, tarih, branch ve hash'e göre milisaniyeler içinde arama yapan ücretsiz, açık kaynak, çevrimdışı masaüstü uygulamasıdır.",
-        "keywords": "git commit arama, git log arama, tüm repolarda commit ara, branch commit arama, git commit search, search git commits across repositories, git geçmişi arama, commit bulma programı, git masaüstü uygulaması, ücretsiz git aracı",
-        "nav": ["Özellikler", "Nasıl çalışır", "Sorgu dili", "İndir", "SSS"],
-        "lang_switch": ("English", "en/"),
-        "badge": "Ücretsiz ve açık kaynak · v{v}",
-        "h1": "Tüm git repolarınızda <em>commit arayın</em>",
-        "lead": "Comitra, bilgisayarınızdaki bütün git repolarını bulur, tüm branch'lerdeki commit'leri indeksler ve mesaja, yazara, tarihe, branch'e veya hash'e göre milisaniyeler içinde bulmanızı sağlar. İnternet gerekmez, verileriniz bilgisayarınızdan çıkmaz.",
-        "cta_dl": "İndir",
-        "cta_gh": "GitHub'da incele",
-        "note": "Windows 10/11 · macOS 11+ · Linux · Gereksinim: git",
-        "alt_shot": "Comitra arama ekranı: Türkçe commit mesajlarında vurgulanmış arama sonuçları, filtre paneli ve commit detayları",
-        "stats": [("4,6 sn", "100.000 commit'i indeksleme"), ("~30 ms", "tam metin arama"), ("0 bayt", "dışarı gönderilen veri"), ("3", "işletim sistemi")],
-        "feat_h": "Commit'inizi nerede yaptığınızı hatırlamanıza gerek yok",
-        "feat_p": "Onlarca repo ve yüzlerce branch arasında kaybolan o commit'i tek bir arama kutusundan bulun.",
-        "features": [
-            ("search", "Türkçeye uygun tam metin arama", "Büyük/küçük harf ve aksan duyarsız: <i>odeme</i> yazın, <i>Ödeme</i>'yi bulun. Tam ifade, ön ek (<code>login*</code>) ve dışlama (<code>-wip</code>) desteklenir."),
-            ("branch", "Tüm repolar, tüm branch'ler", "Klasörlerinizdeki tüm repoları otomatik bulur. Yerel ve uzak branch'leri, tag'leri, submodule ve bare repoları indeksler."),
-            ("filter", "Güçlü filtreler", "Yazar, ortak yazar, tarih aralığı, hazır tarihler, repo, branch (<code>feature/*</code>), hash, değişen dosya, merge commit, saat ve haftanın günü."),
-            ("bolt", "Milisaniyeler içinde sonuç", "SQLite FTS5 tabanlı yerel indeks. Milyonlarca sonuçta bile akıcı kaydırma, kelime vurgulama, repoya, yazara veya güne göre gruplama."),
-            ("refresh", "Akıllı artımlı güncelleme", "Sadece değişen repolar taranır. Fetch ile gelen eski tarihli commit'ler kaçmaz. Force-push sonrası kaybolan commit'ler silinmez, işaretlenir."),
-            ("diff", "Commit detayı ve diff", "Tam mesaj, iki tarih, ortak yazarlar, commit'i içeren branch'ler, değişen dosyalar ve renkli diff tek ekranda."),
-            ("terminal", "Bir tıkla aç", "Repoyu dosya yöneticisinde, terminalde veya VS Code gibi editörünüzde açın. Hash'i tek tuşla kopyalayın."),
-            ("lock", "Tamamen çevrimdışı ve gizli", "Telemetri yok, hesap yok, bulut yok. İndeks yalnızca sizin bilgisayarınızda durur. İsteğe bağlı <code>git fetch</code> dışında ağ kullanılmaz."),
-            ("usb", "Kurulumlu veya taşınabilir", "Windows kurulumu yönetici izni istemez. Taşınabilir sürüm verilerini kendi klasöründe tutar, USB bellekte taşıyabilirsiniz."),
-        ],
-        "how_h": "Üç adımda başlayın",
-        "how_p": "Kurulum ve ilk indeksleme genelde bir dakikadan kısa sürer.",
-        "steps": [
-            ("İndirin ve açın", "İşletim sisteminize uygun paketi indirin. Bilgisayarınızda git kurulu olması yeterli."),
-            ("Klasör ekleyin", "Projelerinizin bulunduğu klasörü seçin (ör. <code>~/projeler</code>). Comitra içindeki tüm repoları bulup indeksler."),
-            ("Arayın", "Yazmaya başlayın. Sonuçlar siz yazarken gelir. Filtre paneliyle veya sorgu diliyle daraltın."),
-        ],
-        "query_h": "Arama kutusundan her şeyi yapın",
-        "query_p": "Filtreleri panelden tıklayarak seçebilir ya da doğrudan yazabilirsiniz. İkisi birbirini anında günceller.",
-        "query_points": [
-            ("Türkçe takma adlar", "<code>yazar:</code>, <code>proje:</code>, <code>dal:</code>, <code>tarih:bugün</code>, <code>gün:cuma</code>, <code>merge:gizle</code>"),
-            ("Hazır tarihler", "bugün, dün, son 7 gün, son 30 gün, bu ay, bu yıl, tek gün veya aralık"),
-            ("Kayıtlı aramalar", "sık kullandığınız filtre kombinasyonlarını kaydedin, son aramalarınıza dönün"),
-            ("Dışa aktarma", "sonuçları CSV veya JSON olarak kaydedin"),
-            ("Komut satırı", "aynı sorgular <code>comitra-cli search</code> ile terminalde de çalışır"),
-        ],
-        "code": [
-            ('<span class="c"># Ahmet\'in son 7 gündeki ödeme commit\'leri, WIP hariç</span>', ""),
-            ('<span class="k">author:</span>ahmet <span class="k">date:</span>7d ödeme <span class="s">-wip</span>', ""),
-            ("", ""),
-            ('<span class="c"># feature branch\'lerinde, tam ifade</span>', ""),
-            ('<span class="k">branch:</span>feature/* <span class="s">"ödeme hatası"</span>', ""),
-            ("", ""),
-            ('<span class="c"># Cuma akşamı yapılan, merge olmayan commit\'ler</span>', ""),
-            ('<span class="k">day:</span>cuma <span class="k">hour:</span>18-23 <span class="k">merge:</span>gizle', ""),
-            ("", ""),
-            ('<span class="c"># Bir dosyaya dokunan commit\'ler, Ekim ayı</span>', ""),
-            ('<span class="k">file:</span>src/auth/ <span class="k">date:</span>2026-10', ""),
-            ("", ""),
-            ('<span class="c"># Kısa hash ile doğrudan bul</span>', ""),
-            ('a1b2c3d', ""),
-        ],
-        "dl_h": "Comitra'yı indirin",
-        "dl_p": "Ücretsizdir. Kurulumlu sürümü veya hiçbir şey kurmadan çalışan taşınabilir sürümü seçin.",
-        "recommended": "Önerilen",
-        "installer": "Kurulum",
-        "portable": "Taşınabilir",
-        "dl": {
-            "windows": ("Windows", "Windows 10 / 11, 64-bit", "Kurulum (.exe)", "Taşınabilir (.zip)"),
-            "macos": ("macOS", "macOS 11+, Apple Silicon ve Intel", "Apple Silicon (.dmg)", "Intel (.dmg)", "Taşınabilir (.zip)"),
-            "linux": ("Linux", "x86_64; Ubuntu 22.04+, Fedora, Debian, Arch…", "AppImage", "Taşınabilir (.tar.gz)"),
-        },
-        "release_tpl": "Son sürüm: {v} · {d}",
-        "release_default": "Tüm sürümler ve sürüm notları GitHub'da.",
-        "all_releases": "Tüm sürümler",
-        "callout": "<b>İlk açılışta uyarı görürseniz:</b> Paketler henüz dijital olarak imzalı değildir. Windows'ta SmartScreen penceresinde <i>Ek bilgi → Yine de çalıştır</i>, macOS'ta uygulamaya sağ tıklayıp <i>Aç</i> deyin. Linux'ta AppImage'a çalıştırma izni verin: <code>chmod +x Comitra-*.AppImage</code>. Comitra'nın çalışması için <a href=\"https://git-scm.com/downloads\" rel=\"noopener\">git</a> kurulu olmalıdır.",
-        "faq_h": "Sık sorulan sorular",
-        "faq": [
-            ("Comitra ücretsiz mi?", "Evet. Comitra MIT lisanslı, açık kaynak ve tamamen ücretsizdir. Hesap açmanız veya kayıt olmanız gerekmez."),
-            ("Kodum veya commit'lerim bir yere gönderiliyor mu?", "Hayır. Comitra tamamen çevrimdışı çalışır, telemetri içermez. İndeks yalnızca bilgisayarınızdaki bir SQLite dosyasında tutulur. Ayarlardan açarsanız yalnızca kendi git sunucularınıza <code>git fetch</code> yapılır."),
-            ("Hangi işletim sistemlerinde çalışır?", "Windows 10/11 (64-bit), macOS 11 ve üzeri (Apple Silicon ve Intel) ve x86_64 Linux dağıtımlarında çalışır. Her platform için kurulumlu ve taşınabilir paket vardır."),
-            ("Kaç repo ve commit'i kaldırabilir?", "Yüzlerce repo ve milyonlarca commit sorun değildir. 100.000 commit'lik bir repo yaklaşık 5 saniyede indekslenir, aramalar milisaniyeler sürer. Sonraki güncellemelerde yalnızca değişen repolar taranır."),
-            ("Uzak (remote) branch'lerdeki commit'leri de bulur mu?", "Evet. Bilgisayarınızdaki yerel ve uzak takip branch'lerinin hepsi indekslenir. Takım arkadaşlarınızın yeni commit'lerini görmek için ayarlardan \"Güncellemeden önce git fetch çalıştır\" seçeneğini açabilirsiniz."),
-            ("Force-push veya rebase sonrası ne olur?", "Artık hiçbir branch'ten erişilemeyen commit'ler silinmez, işaretlenir. Varsayılan olarak gizlenirler, isterseniz <code>unreachable:include</code> filtresiyle görebilirsiniz."),
-            ("Taşınabilir sürüm ne demek?", "Taşınabilir sürüm kurulum gerektirmez ve ayarlarını, indeksini programın yanındaki <code>comitra-data</code> klasöründe tutar. Klasörü USB belleğe kopyalayıp başka bir bilgisayarda kullanabilirsiniz."),
-            ("GitHub, GitLab veya Bitbucket hesabı gerekir mi?", "Hayır. Comitra yalnızca bilgisayarınızdaki git klasörlerini okur. Repolarınız hangi servisteyse (veya hiçbirinde değilse) fark etmez."),
-        ],
-        "footer": "Comitra – MIT lisanslı, açık kaynak git commit arama aracı.",
-        "f_links": [("GitHub", REPO), ("Sürümler", REPO + "/releases"), ("Hata bildir", REPO + "/issues"), ("Tasarım belgesi", REPO + "/blob/HEAD/docs/DESIGN.md")],
-    },
-    "en": {
-        "path": "en/index.html",
-        "url": BASE + "en/",
         "locale": "en_US",
         "title": "Comitra – Search Git Commits Across All Your Repositories (Free, Windows · macOS · Linux)",
         "desc": "Comitra is a free, open-source, offline desktop app that finds every git repository on your computer and searches commits on all branches by message, author, date, branch and hash in milliseconds.",
         "keywords": "git commit search, search git commits across repositories, git log search tool, find commit across branches, search all git repos, git history search, desktop git tool, offline git search, free git tool",
         "nav": ["Features", "How it works", "Query language", "Download", "FAQ"],
-        "lang_switch": ("Türkçe", "../"),
         "badge": "Free and open source · v{v}",
         "h1": "Search commits across <em>all your git repos</em>",
         "lead": "Comitra finds every git repository on your computer, indexes the commits on all branches and lets you find them by message, author, date, branch or hash in milliseconds. No internet needed, your data never leaves your machine.",
@@ -181,8 +89,8 @@ T = {
             ("Command line", "the same queries work in the terminal with <code>comitra-cli search</code>"),
         ],
         "code": [
-            ('<span class="c"># Ahmet\'s payment commits from the last 7 days, no WIP</span>', ""),
-            ('<span class="k">author:</span>ahmet <span class="k">date:</span>7d payment <span class="s">-wip</span>', ""),
+            ('<span class="c"># Alice\'s payment commits from the last 7 days, no WIP</span>', ""),
+            ('<span class="k">author:</span>alice <span class="k">date:</span>7d payment <span class="s">-wip</span>', ""),
             ("", ""),
             ('<span class="c"># On feature branches, exact phrase</span>', ""),
             ('<span class="k">branch:</span>feature/* <span class="s">"payment error"</span>', ""),
@@ -235,10 +143,9 @@ def asset_btn(asset: str, label: str, primary: bool = False) -> str:
 
 def page(lang: str) -> str:
     t = T[lang]
-    other = "en" if lang == "tr" else "tr"
-    prefix = "" if lang == "tr" else "../"
-    a = prefix + "assets/"
-    anchors = ["ozellikler", "nasil", "sorgu", "indir", "sss"] if lang == "tr" else ["features", "how", "query", "download", "faq"]
+    prefix = ""
+    a = "assets/"
+    anchors = ["features", "how", "query", "download", "faq"]
     nav = "".join(f'<li><a href="#{anchors[i]}">{n}</a></li>' for i, n in enumerate(t["nav"]))
     stats = "".join(f'<div class="stat"><b>{v}</b><span>{l}</span></div>' for v, l in t["stats"])
     feats = "".join(f'<article class="card"><div class="ico">{icon(i)}</div><h3>{h}</h3><p>{p}</p></article>'
@@ -283,7 +190,7 @@ def page(lang: str) -> str:
             "image": BASE + "assets/icon-512.png",
             "screenshot": BASE + "assets/screenshot-light.png",
             "codeRepository": REPO,
-            "inLanguage": ["tr", "en"],
+            "inLanguage": "en",
             "softwareRequirements": "git",
             "featureList": [strip_tags(h) for _, h, _ in t["features"]],
         },
@@ -315,9 +222,6 @@ def page(lang: str) -> str:
 <meta name="theme-color" content="#2563eb">
 <meta name="color-scheme" content="light dark">
 <link rel="canonical" href="{t["url"]}">
-<link rel="alternate" hreflang="tr" href="{T["tr"]["url"]}">
-<link rel="alternate" hreflang="en" href="{T["en"]["url"]}">
-<link rel="alternate" hreflang="x-default" href="{T["en"]["url"]}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Comitra">
 <meta property="og:title" content="{escape(t["title"])}">
@@ -327,7 +231,6 @@ def page(lang: str) -> str:
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="{t["locale"]}">
-<meta property="og:locale:alternate" content="{T[other]["locale"]}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{escape(t["title"])}">
 <meta name="twitter:description" content="{escape(t["desc"])}">
@@ -340,11 +243,10 @@ def page(lang: str) -> str:
 {ld_html}
 </head>
 <body>
-<a class="skip" href="#main">{"İçeriğe geç" if lang == "tr" else "Skip to content"}</a>
+<a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap nav">
 <a class="brand" href="{t["url"]}"><img src="{a}icon-192.png" width="30" height="30" alt="">Comitra</a>
 <ul>{nav}<li><a href="{REPO}" rel="noopener">GitHub</a></li></ul>
-<a class="lang" href="{t["lang_switch"][1]}" hreflang="{other}" lang="{other}">{t["lang_switch"][0]}</a>
 </div></header>
 <main id="main">
 <section class="hero"><div class="wrap">
@@ -407,17 +309,15 @@ def main() -> None:
         print("wrote", out)
     today = date.today().isoformat()
     sitemap = f"""<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
-""" + "".join(
-        f"""  <url>
-    <loc>{t["url"]}</loc>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>{BASE}</loc>
     <lastmod>{today}</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>{"1.0" if lang == "tr" else "0.9"}</priority>
-    <xhtml:link rel="alternate" hreflang="tr" href="{T["tr"]["url"]}"/>
-    <xhtml:link rel="alternate" hreflang="en" href="{T["en"]["url"]}"/>
+    <priority>1.0</priority>
   </url>
-""" for lang, t in T.items()) + "</urlset>\n"
+</urlset>
+"""
     with open(os.path.join(SITE, "sitemap.xml"), "w", encoding="utf-8") as fh:
         fh.write(sitemap)
     with open(os.path.join(SITE, "robots.txt"), "w", encoding="utf-8") as fh:
@@ -431,10 +331,10 @@ def main() -> None:
     with open(os.path.join(SITE, "site.webmanifest"), "w", encoding="utf-8") as fh:
         json.dump(manifest, fh, indent=2)
     with open(os.path.join(SITE, "404.html"), "w", encoding="utf-8") as fh:
-        fh.write(f"""<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sayfa bulunamadı – Comitra</title><meta name="robots" content="noindex"><link rel="stylesheet" href="{BASE}style.css"></head>
-<body><main class="hero"><div class="wrap"><h1>404</h1><p class="lead">Sayfa bulunamadı · Page not found</p>
-<div class="cta"><a class="btn btn-primary" href="{BASE}">Ana sayfa</a><a class="btn btn-ghost" href="{BASE}en/">Home (English)</a></div></div></main></body></html>
+        fh.write(f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found – Comitra</title><meta name="robots" content="noindex"><link rel="stylesheet" href="{BASE}style.css"></head>
+<body><main class="hero"><div class="wrap"><h1>404</h1><p class="lead">This page does not exist.</p>
+<div class="cta"><a class="btn btn-primary" href="{BASE}">Go to the home page</a></div></div></main></body></html>
 """)
     open(os.path.join(SITE, ".nojekyll"), "w").close()
 

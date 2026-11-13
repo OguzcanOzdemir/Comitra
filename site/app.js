@@ -32,9 +32,7 @@
 
   var os = detectOS();
   var hero = document.getElementById("hero-download");
-  var labels = document.documentElement.lang === "tr"
-    ? { windows: "Windows için indir", macos: "macOS için indir", linux: "Linux için indir" }
-    : { windows: "Download for Windows", macos: "Download for macOS", linux: "Download for Linux" };
+  var labels = { windows: "Download for Windows", macos: "Download for macOS", linux: "Download for Linux" };
   if (os) {
     var card = document.getElementById("dl-" + os);
     if (card) card.classList.add("recommended");
@@ -68,7 +66,7 @@
       }
       var info = document.getElementById("release-info");
       if (info && rel.tag_name) {
-        var date = rel.published_at ? new Date(rel.published_at).toLocaleDateString(document.documentElement.lang) : "";
+        var date = rel.published_at ? new Date(rel.published_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "";
         info.textContent = info.getAttribute("data-template").replace("{v}", rel.tag_name).replace("{d}", date);
       }
     })

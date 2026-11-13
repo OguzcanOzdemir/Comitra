@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import sys
 
-from .. import APP_NAME, __version__, config, i18n
+from .. import APP_NAME, __version__, config
 
 
 def _icon_path() -> str | None:
@@ -41,7 +41,6 @@ def run_gui() -> int:
         app.setWindowIcon(QIcon(icon))
 
     settings = config.Settings.load()
-    i18n.set_language(settings.language)
     from . import theme
 
     theme.apply(settings.theme)

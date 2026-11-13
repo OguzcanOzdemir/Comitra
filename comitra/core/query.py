@@ -4,14 +4,14 @@ The search box and the filter panel share a single :class:`Query` object.
 ``parse(text)`` and ``Query.to_string()`` round-trip, so either side can
 update the other.
 
-Syntax (keys are case-insensitive, Turkish aliases accepted)::
+Syntax (keys are case-insensitive)::
 
-    ödeme "tam ifade" login* -wip -"work in progress"
-    author:ahmet,ayse@firma.com     yazar:
-    repo:billing                    proje:
-    branch:feature/*                dal:
+    payment "exact phrase" login* -wip -"work in progress"
+    author:alice,bob@example.com
+    repo:billing
+    branch:feature/*
     hash:a1b2c3d
-    file:*.py file:src/auth/        dosya:
+    file:*.py file:src/auth/
     date:today | yesterday | 7d | 30d | month | year
     date:2026-11-10 | date:2026-10-01..2026-10-31 | date:2026-10 | date:2026
     after:2026-10-01 (inclusive)   before:2026-11-01 (exclusive)
@@ -28,51 +28,47 @@ from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 
 KEY_ALIASES = {
-    "author": "author", "a": "author", "yazar": "author", "kim": "author",
-    "repo": "repo", "r": "repo", "proje": "repo", "project": "repo",
-    "branch": "branch", "b": "branch", "dal": "branch",
+    "author": "author", "a": "author",
+    "repo": "repo", "r": "repo", "project": "repo",
+    "branch": "branch", "b": "branch",
     "hash": "hash", "h": "hash", "commit": "hash",
-    "file": "file", "f": "file", "dosya": "file", "path": "file",
-    "date": "date", "d": "date", "tarih": "date",
-    "after": "after", "since": "after", "sonra": "after", "from": "after",
-    "before": "before", "until": "before", "once": "before", "önce": "before",
-    "on": "on", "gun": "on",
+    "file": "file", "f": "file", "path": "file",
+    "date": "date", "d": "date",
+    "after": "after", "since": "after", "from": "after",
+    "before": "before", "until": "before",
+    "on": "on",
     "merge": "merge",
-    "hour": "hour", "saat": "hour", "time": "hour",
-    "day": "day", "gün": "day", "weekday": "day", "haftagunu": "day",
-    "unreachable": "unreachable", "kayip": "unreachable", "kayıp": "unreachable", "lost": "unreachable",
-    "sort": "sort", "sirala": "sort", "sırala": "sort", "order": "sort",
+    "hour": "hour", "time": "hour",
+    "day": "day", "weekday": "day",
+    "unreachable": "unreachable", "lost": "unreachable",
+    "sort": "sort", "order": "sort",
 }
 
 DATE_PRESETS = {
-    "today": "today", "bugun": "today", "bugün": "today",
-    "yesterday": "yesterday", "dun": "yesterday", "dün": "yesterday",
-    "7d": "7d", "week": "7d", "hafta": "7d",
+    "today": "today",
+    "yesterday": "yesterday",
+    "7d": "7d", "week": "7d",
     "30d": "30d",
-    "month": "month", "buay": "month", "ay": "month", "thismonth": "month",
-    "year": "year", "buyil": "year", "buyıl": "year", "yil": "year", "yıl": "year", "thisyear": "year",
+    "month": "month", "thismonth": "month",
+    "year": "year", "thisyear": "year",
 }
 
 DAY_NAMES = {
-    0: ["mon", "monday", "pzt", "pazartesi", "1"],
-    1: ["tue", "tuesday", "sal", "sali", "salı", "2"],
-    2: ["wed", "wednesday", "car", "çar", "carsamba", "çarşamba", "3"],
-    3: ["thu", "thursday", "per", "persembe", "perşembe", "4"],
-    4: ["fri", "friday", "cum", "cuma", "5"],
-    5: ["sat", "saturday", "cmt", "cumartesi", "6"],
-    6: ["sun", "sunday", "paz", "pazar", "7"],
+    0: ["mon", "monday", "1"],
+    1: ["tue", "tuesday", "2"],
+    2: ["wed", "wednesday", "3"],
+    3: ["thu", "thursday", "4"],
+    4: ["fri", "friday", "5"],
+    5: ["sat", "saturday", "6"],
+    6: ["sun", "sunday", "7"],
 }
 _DAY_LOOKUP = {name: d for d, names in DAY_NAMES.items() for name in names}
 DAY_SHORT = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
-MERGE_VALUES = {"show": "show", "goster": "show", "göster": "show", "all": "show",
-                "hide": "hide", "gizle": "hide", "no": "hide",
-                "only": "only", "sadece": "only", "yes": "only"}
-UNREACH_VALUES = {"hide": "hide", "gizle": "hide", "include": "include", "show": "include", "goster": "include",
-                  "göster": "include", "dahil": "include", "only": "only", "sadece": "only"}
-SORT_VALUES = {"newest": "newest", "new": "newest", "yeni": "newest", "enyeni": "newest",
-               "oldest": "oldest", "old": "oldest", "eski": "oldest", "eneski": "oldest",
-               "relevance": "relevance", "rel": "relevance", "alaka": "relevance", "ilgili": "relevance"}
+MERGE_VALUES = {"show": "show", "all": "show", "hide": "hide", "no": "hide", "only": "only", "yes": "only"}
+UNREACH_VALUES = {"hide": "hide", "include": "include", "show": "include", "only": "only"}
+SORT_VALUES = {"newest": "newest", "new": "newest", "oldest": "oldest", "old": "oldest",
+               "relevance": "relevance", "rel": "relevance"}
 
 _ISO_DAY = re.compile(r"^\d{4}-\d{1,2}-\d{1,2}$")
 _ISO_MONTH = re.compile(r"^\d{4}-\d{1,2}$")
@@ -377,9 +373,9 @@ def hours_set(hours: tuple[int, int]) -> list[int]:
 def parse_days(v: str) -> list[int] | None:
     out: list[int] = []
     for part in _split_values(v.lower()):
-        if part in ("weekend", "haftasonu", "hafta-sonu"):
+        if part == "weekend":
             out += [5, 6]
-        elif part in ("weekdays", "workdays", "haftaici", "haftaiçi", "hafta-ici"):
+        elif part in ("weekdays", "workdays"):
             out += [0, 1, 2, 3, 4]
         elif part in _DAY_LOOKUP:
             out.append(_DAY_LOOKUP[part])

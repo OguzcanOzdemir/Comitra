@@ -1,85 +1,84 @@
-# Comitra – Görev Listesi
+# Comitra – Task List
 
-Durum: ✅ tamamlandı · 🔜 sıradaki · 💡 fikir
+Status: ✅ done · 🔜 next · 💡 idea
 
-## 1. Çekirdek (core)
+## 1. Core
 
-- ✅ Güvenli git çağrı katmanı (UTF-8, istem yok, `GIT_OPTIONAL_LOCKS=0`, zaman aşımı, `--stdin`, Windows'ta konsol penceresi yok)
-- ✅ git'i bulma (PATH + bilinen kurulum yerleri + ayardan elle yol) ve anlaşılır "git yok" uyarısı
-- ✅ Scanner: normal repo, submodule, bare repo; worktree tekilleştirme; atlanacak klasör adları ve yollar; derinlik sınırı; sembolik link döngüsü koruması
-- ✅ SQLite şeması, WAL, migration altyapısı (`PRAGMA user_version`)
-- ✅ Türkçe ve aksan duyarsız, uzunluk koruyan metin normalizasyonu
-- ✅ FTS5 tam metin indeksi (normalize mesaj)
-- ✅ Ref tabanlı artımlı indeksleme (`log yeni --not eski`)
-- ✅ Erişilemez commit takibi (force-push, rebase, silinen branch), silmeden işaretleme, geri gelince düzeltme
-- ✅ `git gc` sonrası kaybolan uçlarda tam erişilebilirlik taraması
-- ✅ Taşınan repoyu kök commit ve remote ile tanıma
-- ✅ Kaybolan (`missing`) ve kapsam dışı (`inactive`) repo durumları
-- ✅ `.mailmap` ve `Co-authored-by` desteği
-- ✅ İki tarih (author/committer), saat dilimi, yerel saat/gün
-- ✅ İsteğe bağlı değişen dosya indeksi (yol sözlüğüyle)
-- ✅ Paralel indeksleme, tek yazıcı, toplu transaction
-- ✅ Güvenli fetch (prune yok, BatchMode, zaman aşımı, kilit tekrar denemesi, hata sınıflandırma)
-- ✅ Sorgu dili: ayrıştırıcı ve kanonik metne geri çevirme (round-trip), Türkçe takma adlar
-- ✅ Arama servisi: FTS + filtreler, branch çözümleme ve önbelleği, dışlama, hash ön eki, sıralama, gruplama
-- ✅ İstatistik ve CSV/JSON dışa aktarma
+- ✅ Safe git call layer (UTF-8, no prompts, `GIT_OPTIONAL_LOCKS=0`, timeouts, `--stdin`, no console windows on Windows)
+- ✅ Locating git (PATH + well-known install locations + manual path in settings) and a clear "git not found" message
+- ✅ Scanner: regular repos, submodules, bare repos; worktree de-duplication; excluded folder names and paths; depth limit; symlink loop protection
+- ✅ SQLite schema, WAL, migration framework (`PRAGMA user_version`)
+- ✅ Case- and accent-insensitive, length-preserving text normalization
+- ✅ FTS5 full-text index (normalized message)
+- ✅ Ref-based incremental indexing (`log new --not old`)
+- ✅ Tracking unreachable commits (force-push, rebase, deleted branch): flagged instead of deleted, restored when reachable again
+- ✅ Full reachability pass when old tips were garbage-collected
+- ✅ Recognizing moved repositories by root commit and remote
+- ✅ `missing` and `inactive` repository states
+- ✅ `.mailmap` and `Co-authored-by` support
+- ✅ Author and committer dates, time zone, local hour and weekday
+- ✅ Optional changed-file index (with a path dictionary)
+- ✅ Parallel indexing, single writer, batched transactions
+- ✅ Safe fetch (no prune, SSH BatchMode, timeout, lock retry, error classification)
+- ✅ Query language: parser and canonical round-trip back to text
+- ✅ Search service: FTS + filters, branch resolution with cache, exclusions, hash prefixes, sorting, grouping
+- ✅ Statistics and CSV/JSON export
 
-## 2. Komut satırı
+## 2. Command line
 
 - ✅ `add`, `remove`, `roots`, `update [--fetch] [--full]`, `search`, `repos`, `stats`, `info`
 - ✅ `search --format table|json|csv --group repo|author|day`
 
-## 3. Arayüz (PySide6)
+## 3. User interface (PySide6)
 
-- ✅ Ana pencere: arama kutusu, sıralama, gruplama, kayıtlı aramalar menüsü
-- ✅ Filtre paneli (yazar otomatik tamamlama, tarih hazır seçenekleri ve takvim, repo çoklu seçim, branch, hash, dosya, merge, saat, gün, erişilemez commit'ler)
-- ✅ Arama kutusu ⇄ filtre paneli iki yönlü senkron
-- ✅ Sanal kaydırmalı sonuç tablosu, kelime vurgulama, grup başlıkları
-- ✅ Detay paneli: bilgiler, içeren branch'ler, değişen dosyalar, renkli diff (arka planda yüklenir)
-- ✅ Klasörde, terminalde ve editörde açma; hash ve mesaj kopyalama; sağ tık menüsü
-- ✅ Arka planda indeksleme, ilerleme çubuğu, iptal
-- ✅ Güncelleme raporu (başarılı, değişmeyen, hata, bulunamayan, fetch sorunları)
-- ✅ Ayarlar, Repolar, Kayıtlı aramalar, İstatistikler pencereleri
-- ✅ Son aramalar
-- ✅ Açılışta, zamanlanmış ve dosya sistemi izleyerek otomatik güncelleme
-- ✅ Açık, koyu ve sistem teması
-- ✅ Türkçe ve İngilizce arayüz
-- ✅ Klavye kısayolları ve sorgu sözdizimi yardımı
-- ✅ İlk açılış karşılama ekranı
+- ✅ Main window: search box, sorting, grouping, saved searches menu
+- ✅ Filter panel (author autocomplete, date presets and calendar, multi-select repositories, branch, hash, file, merge, hour, weekday, unreachable commits)
+- ✅ Two-way sync between search box and filter panel
+- ✅ Virtually scrolled results table, match highlighting, group headers
+- ✅ Detail panel: metadata, containing branches, changed files, colored diff (loaded in the background)
+- ✅ Open in file manager, terminal or editor; copy hash or message; context menu
+- ✅ Background indexing with progress bar and cancel
+- ✅ Update report (updated, unchanged, error, missing, fetch problems)
+- ✅ Settings, Repositories, Saved searches and Statistics dialogs
+- ✅ Recent searches
+- ✅ Automatic updates on start-up, on a schedule and via file-system watching
+- ✅ Light, dark and system themes
+- ✅ Keyboard shortcuts and query syntax help
+- ✅ First-run welcome screen
 
-## 4. Paketleme ve dağıtım
+## 4. Packaging and distribution
 
-- ✅ Taşınabilir mod (`comitra-portable.txt`, `--portable`, `COMITRA_HOME`)
-- ✅ PyInstaller spec (GUI + CLI, gereksiz Qt modülleri çıkarıldı)
-- ✅ Windows: Inno Setup ile kullanıcı bazlı kurulum (yönetici izni gerekmez) + taşınabilir zip
-- ✅ macOS: `.app`, `.dmg`, taşınabilir zip, ad-hoc imza
-- ✅ Linux: AppImage + taşınabilir tar.gz + `install.sh` (menü kısayolu)
-- ✅ Uygulama ikonu (SVG → PNG/ICO/ICNS)
-- ✅ GitHub Actions: 3 işletim sistemi × 2 Python sürümünde test ve paket üretimi
-- ✅ Tag ile otomatik GitHub Release
+- ✅ Portable mode (`comitra-portable.txt`, `--portable`, `COMITRA_HOME`)
+- ✅ PyInstaller spec (GUI + CLI, unused Qt modules stripped)
+- ✅ Windows: per-user Inno Setup installer (no admin rights) + portable zip
+- ✅ macOS: `.app`, `.dmg`, portable zip, ad-hoc signature
+- ✅ Linux: AppImage + portable tar.gz + `install.sh` (menu entry)
+- ✅ App icon (SVG → PNG/ICO/ICNS)
+- ✅ GitHub Actions: tests on 3 operating systems × 2 Python versions, package builds
+- ✅ Automatic GitHub Release on tags
 
-## 5. Web sitesi
+## 5. Website
 
-- ✅ GitHub Pages tanıtım sitesi (Türkçe + İngilizce, `tools/build_site.py` ile tek şablondan)
-- ✅ İşletim sistemini algılayıp doğru indirme butonunu öne çıkarma, son sürüm dosyalarına doğrudan link
-- ✅ SEO: başlık/açıklama, canonical, hreflang, Open Graph/Twitter kartı, JSON-LD (SoftwareApplication, FAQPage), sitemap.xml, robots.txt
-- 🔜 Google Search Console doğrulaması ve sitemap gönderimi (repo sahibi yapmalı)
+- ✅ GitHub Pages landing page (generated by `tools/build_site.py`)
+- ✅ Detects the visitor's OS, highlights the matching download and links straight to the latest release files
+- ✅ SEO: title/description, canonical URL, Open Graph/Twitter card, JSON-LD (SoftwareApplication, FAQPage), sitemap.xml, robots.txt
+- 🔜 Google Search Console verification and sitemap submission (repository owner)
 
-## 6. Kalite
+## 6. Quality
 
-- ✅ Birim testleri: normalizasyon, sorgu dili
-- ✅ Gerçek git repolarıyla entegrasyon testleri: fast-forward merge, force-push, gc, worktree, bare, taşınan repo, fetch başarı ve hata, dosya, saat ve gün filtreleri
-- ✅ Ekransız arayüz duman testi
-- ✅ 100 bin commit ile performans ölçümü (bkz. `docs/DESIGN.md`)
+- ✅ Unit tests: normalization, query language
+- ✅ Integration tests against real git repositories: fast-forward merge, force-push, gc, worktree, bare, moved repo, fetch success and failure, file, hour and weekday filters
+- ✅ Offscreen GUI smoke test
+- ✅ Performance measured with 100k commits (see `docs/DESIGN.md`)
 
-## 7. Sonraki sürümler
+## 7. Future releases
 
-- 🔜 Kod imzalama: Windows Authenticode ve Apple Developer ID + notarization (sertifika gerektirir)
-- 🔜 Diff içeriğinde arama (isteğe bağlı; ayrı bir FTS tablosu ve boyut sınırıyla)
-- 🔜 Bulanık (fuzzy) arama ve "bunu mu demek istediniz?" önerileri
-- 🔜 Kelime içi arama için isteğe bağlı trigram indeks
-- 💡 Yazar kimliklerini elle birleştirme (aynı kişinin farklı e-postaları, `.mailmap` dışı)
-- 💡 İstatistik ekranına grafikler
-- 💡 Sonuçlardan tek tıkla `git show` / `git checkout` (onaylı)
-- 💡 Linux için `.deb` / `.rpm` paketleri, Windows için winget, macOS için Homebrew cask
-- 💡 Sorgu kutusunda sözdizimi renklendirme ve filtre otomatik tamamlama
+- 🔜 Code signing: Windows Authenticode and Apple Developer ID + notarization (needs certificates)
+- 🔜 Searching diff contents (optional; separate FTS table with size limits)
+- 🔜 Fuzzy search and "did you mean?" suggestions
+- 🔜 Optional trigram index for substring search
+- 💡 Manually merging author identities (several e-mails for one person, beyond `.mailmap`)
+- 💡 Charts on the statistics screen
+- 💡 One-click `git show` / `git checkout` from results (with confirmation)
+- 💡 `.deb` / `.rpm` packages, winget for Windows, Homebrew cask for macOS
+- 💡 Syntax highlighting and filter autocompletion in the search box

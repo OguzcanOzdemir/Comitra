@@ -1,16 +1,19 @@
 from comitra.core.textnorm import highlight_html, highlight_spans, normalize, tokens
 
 
-def test_turkish_i_variants_fold_together():
-    assert normalize("İade") == normalize("iade") == normalize("IADE") == "iade"
-    assert normalize("ılık") == "ilik"
+def test_dotted_and_dotless_i_fold_together():
+    # Unicode lower() turns "İ" into two code points; search must treat all
+    # i variants as the same letter.
+    assert normalize("İstanbul") == normalize("istanbul") == normalize("ISTANBUL") == "istanbul"
+    assert normalize("ı") == "i"
     assert normalize("INFO") == "info"
 
 
 def test_diacritics_removed():
-    assert normalize("Ödeme Hatası") == "odeme hatasi"
-    assert normalize("çğşüö ÇĞŞÜÖ") == "cgsuo cgsuo"
+    assert normalize("Café Crème") == "cafe creme"
+    assert normalize("naïve résumé") == "naive resume"
     assert normalize("Straße") == "strase"
+    assert normalize("Ångström Øre") == "angstrom ore"
 
 
 def test_length_preserving():
@@ -23,8 +26,8 @@ def test_tokens():
 
 
 def test_highlight_maps_to_original():
-    text = "Ödeme HATASI düzeltildi"
-    spans = highlight_spans(text, [("odeme", False), ("hata", True)])
-    assert [text[a:b] for a, b in spans] == ["Ödeme", "HATASI"]
-    html = highlight_html("a <b> ödeme", [("odeme", False)], "[", "]")
-    assert html == "a &lt;b&gt; [ödeme]"
+    text = "Café PAYMENTS fixed"
+    spans = highlight_spans(text, [("cafe", False), ("payment", True)])
+    assert [text[a:b] for a, b in spans] == ["Café", "PAYMENTS"]
+    html = highlight_html("a <b> café", [("cafe", False)], "[", "]")
+    assert html == "a &lt;b&gt; [café]"

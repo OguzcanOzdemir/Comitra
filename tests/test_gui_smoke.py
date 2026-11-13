@@ -31,10 +31,9 @@ def _wait(app, cond, timeout=20):
 def test_main_window_end_to_end(qapp, tmp_path, monkeypatch, make_repo):
     monkeypatch.setenv("COMITRA_HOME", str(tmp_path / "home"))
     r = make_repo("shop")
-    r.commit("Ödeme hatası düzeltildi")
-    r.commit("Sepet sayfası")
+    r.commit("Fix café payment error")
+    r.commit("Shopping cart page")
 
-    from comitra import i18n
     from comitra.config import Settings
     from comitra.core.indexer import IndexSummary, RepoResult
     from comitra.core.scanner import ScanReport
@@ -42,7 +41,6 @@ def test_main_window_end_to_end(qapp, tmp_path, monkeypatch, make_repo):
     from comitra.ui import dialogs
     from comitra.ui.main_window import MainWindow
 
-    i18n.set_language("tr")
     s = Settings()
     s.roots = [str(tmp_path / "work")]
     s.save()
@@ -50,10 +48,10 @@ def test_main_window_end_to_end(qapp, tmp_path, monkeypatch, make_repo):
     w.show()
     assert _wait(qapp, lambda: w.index_thread is None and w.model.rowCount() == 2), w.status_label.text()
 
-    w.search_edit.setText("odeme")
+    w.search_edit.setText("cafe")
     w._query_text_changed()
     assert _wait(qapp, lambda: w.model.rowCount() == 1)
-    assert w.detail.row is not None and w.detail.row["subject"] == "Ödeme hatası düzeltildi"
+    assert w.detail.row is not None and w.detail.row["subject"] == "Fix café payment error"
 
     # panel -> search box
     w.filters.merge_combo.setCurrentIndex(w.filters.merge_combo.findData("hide"))

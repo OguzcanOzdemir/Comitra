@@ -12,7 +12,6 @@ from PySide6.QtWidgets import (
 )
 
 from ..core.query import DateFilter, Query, _split_values
-from ..i18n import tr
 
 DATE_CHOICES = [
     ("", "Any time"), ("today", "Today"), ("yesterday", "Yesterday"), ("7d", "Last 7 days"),
@@ -52,9 +51,9 @@ class FilterPanel(QScrollArea):
         lay.setSpacing(8)
 
         # Authors -------------------------------------------------------------------
-        g = QGroupBox(tr("Authors"))
+        g = QGroupBox("Authors")
         gl = QVBoxLayout(g)
-        self.author_edit = QLineEdit(placeholderText=tr("Add author (name or e-mail)…"))
+        self.author_edit = QLineEdit(placeholderText="Add author (name or e-mail)…")
         self.author_model = QStringListModel(self)
         comp = QCompleter(self.author_model, self)
         comp.setCaseSensitivity(Qt.CaseInsensitive)
@@ -65,9 +64,9 @@ class FilterPanel(QScrollArea):
         self.author_edit.returnPressed.connect(lambda: self._add_author(self.author_edit.text()))
         self.author_list = QListWidget()
         self.author_list.setMaximumHeight(90)
-        self.author_list.setToolTip(tr("Remove"))
+        self.author_list.setToolTip("Remove")
         self.author_list.itemDoubleClicked.connect(self._remove_author)
-        rm = QPushButton(tr("Remove"))
+        rm = QPushButton("Remove")
         rm.clicked.connect(lambda: [self._remove_author(i) for i in self.author_list.selectedItems()])
         gl.addWidget(self.author_edit)
         gl.addWidget(self.author_list)
@@ -75,15 +74,15 @@ class FilterPanel(QScrollArea):
         lay.addWidget(g)
 
         # Date ---------------------------------------------------------------------
-        g = QGroupBox(tr("Date"))
+        g = QGroupBox("Date")
         gl = QFormLayout(g)
         self.date_combo = QComboBox()
         for key, label in DATE_CHOICES:
-            self.date_combo.addItem(tr(label), key)
+            self.date_combo.addItem(label, key)
         today = date.today()
         self.date_from = QDateEdit(_qdate(today - timedelta(days=30)), calendarPopup=True, displayFormat="yyyy-MM-dd")
         self.date_to = QDateEdit(_qdate(today), calendarPopup=True, displayFormat="yyyy-MM-dd")
-        self.lbl_from, self.lbl_to = QLabel(tr("From")), QLabel(tr("To"))
+        self.lbl_from, self.lbl_to = QLabel("From"), QLabel("To")
         gl.addRow(self.date_combo)
         gl.addRow(self.lbl_from, self.date_from)
         gl.addRow(self.lbl_to, self.date_to)
@@ -93,9 +92,9 @@ class FilterPanel(QScrollArea):
         lay.addWidget(g)
 
         # Repos ---------------------------------------------------------------------
-        g = QGroupBox(tr("Repositories"))
+        g = QGroupBox("Repositories")
         gl = QVBoxLayout(g)
-        self.repo_filter = QLineEdit(placeholderText=tr("Filter repositories…"))
+        self.repo_filter = QLineEdit(placeholderText="Filter repositories…")
         self.repo_filter.textChanged.connect(self._filter_repo_list)
         self.repo_list = QListWidget()
         self.repo_list.setMinimumHeight(110)
@@ -105,20 +104,20 @@ class FilterPanel(QScrollArea):
         lay.addWidget(g)
 
         # Text-ish filters ----------------------------------------------------------
-        g = QGroupBox(tr("Branch"))
+        g = QGroupBox("Branch")
         gl = QFormLayout(g)
-        self.branch_edit = QLineEdit(placeholderText=tr("Branch patterns, e.g. main, feature/*"))
+        self.branch_edit = QLineEdit(placeholderText="Branch patterns, e.g. main, feature/*")
         self.branch_model = QStringListModel(self)
         bc = QCompleter(self.branch_model, self)
         bc.setCaseSensitivity(Qt.CaseInsensitive)
         bc.setFilterMode(Qt.MatchContains)
         self.branch_edit.setCompleter(bc)
-        self.hash_edit = QLineEdit(placeholderText=tr("Full or short hash"))
-        self.file_edit = QLineEdit(placeholderText=tr("e.g. *.py, src/auth/"))
+        self.hash_edit = QLineEdit(placeholderText="Full or short hash")
+        self.file_edit = QLineEdit(placeholderText="e.g. *.py, src/auth/")
         gl.addRow(self.branch_edit)
-        gl.addRow(QLabel(tr("Commit hash")))
+        gl.addRow(QLabel("Commit hash"))
         gl.addRow(self.hash_edit)
-        gl.addRow(QLabel(tr("Changed file")))
+        gl.addRow(QLabel("Changed file"))
         gl.addRow(self.file_edit)
         for w in (self.branch_edit, self.hash_edit, self.file_edit):
             w.textEdited.connect(self._changed_later)
@@ -126,16 +125,16 @@ class FilterPanel(QScrollArea):
         lay.addWidget(g)
 
         # Merge / time ------------------------------------------------------------
-        g = QGroupBox(tr("Merge commits"))
+        g = QGroupBox("Merge commits")
         gl = QFormLayout(g)
         self.merge_combo = QComboBox()
         for key, label in (("show", "Show"), ("hide", "Hide"), ("only", "Only merges")):
-            self.merge_combo.addItem(tr(label), key)
+            self.merge_combo.addItem(label, key)
         self.merge_combo.currentIndexChanged.connect(self._changed_now)
         gl.addRow(self.merge_combo)
         lay.addWidget(g)
 
-        g = QGroupBox(tr("Time of day"))
+        g = QGroupBox("Time of day")
         gl = QHBoxLayout(g)
         self.hour_check = QCheckBox()
         self.hour_from = QSpinBox(minimum=0, maximum=23, value=9, suffix=":00")
@@ -150,28 +149,28 @@ class FilterPanel(QScrollArea):
         gl.addStretch(1)
         lay.addWidget(g)
 
-        g = QGroupBox(tr("Weekdays"))
+        g = QGroupBox("Weekdays")
         gl = QHBoxLayout(g)
         gl.setSpacing(2)
         self.day_buttons: list[QToolButton] = []
         for label in DAY_LABELS:
-            b = QToolButton(text=tr(label), checkable=True)
+            b = QToolButton(text=label, checkable=True)
             b.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             b.toggled.connect(self._changed_now)
             self.day_buttons.append(b)
             gl.addWidget(b)
         lay.addWidget(g)
 
-        g = QGroupBox(tr("Commits no longer on any branch"))
+        g = QGroupBox("Commits no longer on any branch")
         gl = QFormLayout(g)
         self.unreach_combo = QComboBox()
         for key, label in (("hide", "Hide"), ("include", "Include"), ("only", "Only these")):
-            self.unreach_combo.addItem(tr(label), key)
+            self.unreach_combo.addItem(label, key)
         self.unreach_combo.currentIndexChanged.connect(self._changed_now)
         gl.addRow(self.unreach_combo)
         lay.addWidget(g)
 
-        reset = QPushButton(tr("Reset filters"))
+        reset = QPushButton("Reset filters")
         reset.clicked.connect(self.reset)
         lay.addWidget(reset)
         lay.addStretch(1)
@@ -190,7 +189,7 @@ class FilterPanel(QScrollArea):
             seen.add(name)
             it = QListWidgetItem(f"{name}")
             it.setData(Qt.UserRole, name)
-            it.setToolTip(f"{path}\n{count} {tr('commits')}")
+            it.setToolTip(f"{path}\n{count} commits")
             it.setFlags(it.flags() | Qt.ItemIsUserCheckable)
             it.setCheckState(Qt.Checked if name in checked else Qt.Unchecked)
             self.repo_list.addItem(it)
@@ -328,7 +327,7 @@ class FilterPanel(QScrollArea):
         show_to = key == "range"
         self.date_from.setVisible(show_from)
         self.lbl_from.setVisible(show_from)
-        self.lbl_from.setText(tr("Day") if key == "single" else tr("From"))
+        self.lbl_from.setText("Day" if key == "single" else "From")
         self.date_to.setVisible(show_to)
         self.lbl_to.setVisible(show_to)
         if emit:

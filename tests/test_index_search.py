@@ -29,20 +29,20 @@ def find(conn, text, **opts):
     return [rows[i]["subject"] for i in res.ids], res
 
 
-def test_basic_index_and_turkish_search(conn, settings, make_repo):
+def test_basic_index_and_unicode_search(conn, settings, make_repo):
     r = make_repo("billing-api")
-    r.commit("Ödeme hatası düzeltildi")
-    r.commit("İade akışı eklendi")
+    r.commit("Fix café payment error")
+    r.commit("Add İstanbul refund flow")
     r.commit("WIP: refactor")
     rep = run(conn, settings)
     assert rep.summary.count("updated") == 1
-    assert find(conn, "odeme")[0] == ["Ödeme hatası düzeltildi"]
-    assert find(conn, "iade")[0] == ["İade akışı eklendi"]
-    assert find(conn, "IADE")[0] == ["İade akışı eklendi"]
-    assert find(conn, '"ödeme hatası"')[0] == ["Ödeme hatası düzeltildi"]
-    assert find(conn, "hata*")[0] == ["Ödeme hatası düzeltildi"]
-    assert set(find(conn, "-wip")[0]) == {"Ödeme hatası düzeltildi", "İade akışı eklendi"}
-    assert find(conn, "repo:billing -wip -iade")[0] == ["Ödeme hatası düzeltildi"]
+    assert find(conn, "cafe")[0] == ["Fix café payment error"]
+    assert find(conn, "istanbul")[0] == ["Add İstanbul refund flow"]
+    assert find(conn, "ISTANBUL")[0] == ["Add İstanbul refund flow"]
+    assert find(conn, '"payment error"')[0] == ["Fix café payment error"]
+    assert find(conn, "err*")[0] == ["Fix café payment error"]
+    assert set(find(conn, "-wip")[0]) == {"Fix café payment error", "Add İstanbul refund flow"}
+    assert find(conn, "repo:billing -wip -refund")[0] == ["Fix café payment error"]
     assert find(conn, "repo:nope")[0] == []
 
 
@@ -146,15 +146,15 @@ def test_moved_repo_keeps_identity(conn, settings, make_repo, tmp_path):
 
 def test_authors_coauthors_files_hash(conn, settings, make_repo):
     r = make_repo()
-    h1 = r.commit("auth fix\n\nCo-authored-by: Ayşe Kaya <ayse@firma.com>", files={"src/auth/login.py": "x"})
-    r.commit("docs", author=("Mehmet Öz", "mehmet@firma.com"), files={"docs/ödeme notu.md": "y"})
+    h1 = r.commit("auth fix\n\nCo-authored-by: Bob Jones <bob@example.com>", files={"src/auth/login.py": "x"})
+    r.commit("docs", author=("Carol Ng", "carol@example.com"), files={"docs/payment nötes.md": "y"})
     run(conn, settings)
-    assert find(conn, "author:ayse")[0] == ["auth fix"]
-    assert find(conn, "author:mehmet")[0] == ["docs"]
-    assert find(conn, "author:AHMET")[0] == ["auth fix"]
+    assert find(conn, "author:bob")[0] == ["auth fix"]
+    assert find(conn, "author:carol")[0] == ["docs"]
+    assert find(conn, "author:ALICE")[0] == ["auth fix"]
     assert find(conn, "file:*.py")[0] == ["auth fix"]
     assert find(conn, "file:src/auth/")[0] == ["auth fix"]
-    assert find(conn, "file:odeme")[0] == ["docs"]
+    assert find(conn, "file:notes")[0] == ["docs"]
     assert find(conn, f"hash:{h1[:7]}")[0] == ["auth fix"]
     assert find(conn, h1[:9])[0] == ["auth fix"]
 
@@ -172,7 +172,7 @@ def test_merge_time_filters_and_grouping(conn, settings, make_repo):
     assert "Merge side" not in find(conn, "merge:hide")[0]
     assert find(conn, "hour:09-12")[0] == ["morning"]
     assert find(conn, "hour:22-06")[0] == ["night"]
-    assert find(conn, "day:cuma")[0] == ["morning"]
+    assert find(conn, "day:friday")[0] == ["morning"]
     assert find(conn, "day:weekend merge:hide")[0] == ["night"]
     assert find(conn, "sort:oldest")[0][0] == "morning"
     subjects, res = find(conn, "", group_by="day")

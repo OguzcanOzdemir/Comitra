@@ -1,202 +1,200 @@
 # Comitra
 
-**Bilgisayarınızdaki tüm git repolarında, tüm branch'lerdeki commit'leri tek yerden arayın.**
+**Search commits across all your local git repositories, on every branch, from one place.**
 
-🌐 **Web sitesi ve indirmeler:** <https://oguzcanozdemir.github.io/Comitra/> · [English](https://oguzcanozdemir.github.io/Comitra/en/)
+🌐 **Website and downloads:** <https://oguzcanozdemir.github.io/Comitra/>
 
-Comitra; Windows, macOS ve Linux'ta çalışan, tamamen çevrimdışı bir masaüstü
-uygulamasıdır. Seçtiğiniz klasörlerdeki git repolarını bulur, commit'leri yerel bir
-SQLite veritabanına indeksler ve milisaniyeler içinde arama yapmanızı sağlar.
-Verileriniz bilgisayarınızdan dışarı çıkmaz.
+Comitra is a fully offline desktop app for Windows, macOS and Linux. It finds the git
+repositories in the folders you choose, indexes their commits into a local SQLite
+database and lets you search them in milliseconds. Your data never leaves your computer.
 
-![Arama ekranı](docs/img/arama-acik-tema.png)
+![Search screen](docs/img/search-light.png)
 
-## Özellikler
+## Features
 
-- **Otomatik repo bulma**: normal repolar, submodule'ler, bare repolar. Worktree'ler
-  tekilleştirilir, `node_modules` ve `venv` gibi klasörler atlanır.
-- **Tüm branch'ler**: yerel ve uzak branch'ler, tag'ler, detached HEAD.
-- **Türkçeye uygun tam metin arama**: büyük/küçük harf ve aksan duyarsız (`odeme` yazınca
-  `Ödeme` bulunur, `iade` yazınca `İADE` bulunur). Tam ifade, ön ek ve dışlama desteklenir.
-- **Filtreler**: yazar (ortak yazarlar dahil), tarih, hazır tarih seçenekleri, repo,
-  branch (`feature/*`), hash, değişen dosya, merge commit, saat aralığı, haftanın günü.
-- **Arama kutusu ve filtre paneli senkron**: birinde yaptığınız değişiklik diğerine yansır.
-- **Sonuçlar**: en yeni / en eski / en alakalı sıralama, eşleşen kelime vurgulama;
-  repoya, yazara veya güne göre gruplama; milyonlarca sonuçta bile akıcı sanal kaydırma.
-- **Detay paneli**: tam mesaj, iki tarih, ortak yazarlar, commit'i içeren branch'ler,
-  değişen dosyalar ve renklendirilmiş diff.
-- **Hızlı eylemler**: hash kopyalama; repoyu klasörde, terminalde veya editörde açma.
-- **Artımlı güncelleme**: yalnızca değişen repolar taranır. Fetch ile gelen eski tarihli
-  commit'ler de yakalanır. Force-push veya rebase sonrası kaybolan commit'ler silinmez,
-  işaretlenir.
-- **Arka planda güncelleme**: açılışta, belirli aralıklarla veya repolarda değişiklik
-  algılandığında.
-- **İsteğe bağlı güvenli `git fetch`**: şifre sormaz, zaman aşımı vardır, asla prune yapmaz.
-- Kayıtlı ve son aramalar, istatistik ekranı, CSV/JSON dışa aktarma.
-- Açık ve koyu tema, Türkçe ve İngilizce arayüz, klavye kısayolları.
-- Kurulumlu ve **taşınabilir (portable)** sürümler.
-- Arayüzün yaptığı her şey için bir **komut satırı aracı** da vardır.
+- **Automatic repository discovery**: regular repos, submodules and bare repos. Linked
+  worktrees are de-duplicated; folders such as `node_modules` and `venv` are skipped.
+- **Every branch**: local and remote branches, tags and detached HEAD.
+- **Full-text search**: case- and accent-insensitive (`cafe` finds `Café`), with exact
+  phrases, prefixes and exclusions.
+- **Filters**: author (including co-authors), date ranges and presets, repository,
+  branch (`feature/*`), hash, changed file, merge commits, time of day and weekday.
+- **Search box and filter panel stay in sync**: a change in one shows up in the other.
+- **Results**: newest / oldest / most relevant ordering, highlighted matches, grouping by
+  repository, author or day, and smooth virtual scrolling even with millions of results.
+- **Detail panel**: full message, both dates, co-authors, the branches that contain the
+  commit, changed files and a colored diff.
+- **Quick actions**: copy the hash; open the repository in your file manager, terminal or editor.
+- **Incremental updates**: only changed repositories are rescanned. Old-dated commits that
+  arrive with a fetch are still picked up. Commits lost to a force-push or rebase are
+  flagged, not deleted.
+- **Background updates**: on start-up, on a schedule, or when a repository changes.
+- **Optional, safe `git fetch`**: never prompts for passwords, has a timeout, never prunes.
+- Saved and recent searches, a statistics screen, CSV/JSON export.
+- Light and dark themes, keyboard shortcuts.
+- Installer and **portable** editions.
+- A **command-line tool** for everything the GUI does.
 
-![Gruplama ve diff, koyu tema](docs/img/gruplama-koyu-tema.png)
+![Grouped results and diff, dark theme](docs/img/grouped-dark.png)
 
-## Kurulum
+## Installation
 
-Tek gereksinim bilgisayarda **git** kurulu olmasıdır (<https://git-scm.com>).
-Hazır paketler [Releases](../../releases) sayfasındadır:
+The only requirement is **git** (<https://git-scm.com>).
+Ready-made packages are on the [Releases](../../releases) page:
 
-| Platform | Kurulumlu | Taşınabilir |
+| Platform | Installer | Portable |
 | --- | --- | --- |
-| Windows 10/11 (x64) | `Comitra-…-windows-x64-setup.exe` (yönetici izni gerekmez) | `Comitra-…-windows-x64-portable.zip` |
+| Windows 10/11 (x64) | `Comitra-…-windows-x64-setup.exe` (no admin rights needed) | `Comitra-…-windows-x64-portable.zip` |
 | macOS 11+ (Apple Silicon / Intel) | `Comitra-…-macos-arm64.dmg` / `…-x64.dmg` | `Comitra-…-macos-…-portable.zip` |
 | Linux (x86_64) | `Comitra-…-linux-x86_64.AppImage` | `Comitra-…-linux-x86_64-portable.tar.gz` |
 
-- **Windows:** Kurulum dosyasını çalıştırın. SmartScreen uyarısında *Ek bilgi →
-  Yine de çalıştır*'ı seçin (paket imzalı değildir). Taşınabilir sürüm için zip'i açıp
-  `Comitra.exe`'yi çalıştırın.
-- **macOS:** `.dmg`'yi açıp Comitra'yı *Applications* klasörüne sürükleyin. İlk açılışta
-  sağ tık → *Aç* deyin (paket Apple tarafından onaylı değildir). Taşınabilir sürümü
-  *İndirilenler* klasörü dışına taşıyıp öyle açın. Masaüstü, Belgeler gibi klasörlere
-  erişim izni sorulursa onaylayın.
-- **Linux:** AppImage'a çalıştırma izni verin (`chmod +x Comitra-*.AppImage`) ve çalıştırın.
-  Taşınabilir arşivi açtıktan sonra isterseniz `./install.sh` ile uygulama menüsüne ekleyebilirsiniz.
+- **Windows:** run the installer. If SmartScreen warns you, choose *More info → Run anyway*
+  (the package is not code-signed). For the portable edition, unzip it and run `Comitra.exe`.
+- **macOS:** open the `.dmg` and drag Comitra to *Applications*. On first launch,
+  right-click the app and choose *Open* (the package is not notarized by Apple). Move the
+  portable edition out of *Downloads* before opening it. Allow access if macOS asks about
+  folders such as Desktop or Documents.
+- **Linux:** make the AppImage executable (`chmod +x Comitra-*.AppImage`) and run it.
+  After extracting the portable archive you can run `./install.sh` to add Comitra to the
+  application menu.
 
-### Taşınabilir mod
+### Portable mode
 
-Taşınabilir paketlerde programın yanında `comitra-portable.txt` dosyası bulunur. Bu dosya
-varken ayarlar ve indeks programın yanındaki `comitra-data` klasöründe tutulur. Klasörü USB
-belleğe kopyalayıp başka bir bilgisayarda kullanabilirsiniz. Dosyayı silerseniz normal
-kullanıcı klasörleri kullanılır:
+Portable packages contain a `comitra-portable.txt` file next to the program. While it
+exists, settings and the index are stored in a `comitra-data` folder next to the program,
+so you can carry the whole folder on a USB stick. Delete the file to use the normal
+per-user locations:
 
-| | Ayarlar | Veritabanı |
+| | Settings | Database |
 | --- | --- | --- |
 | Windows | `%APPDATA%\Comitra` | `%LOCALAPPDATA%\Comitra` |
-| macOS | `~/Library/Application Support/Comitra` | aynı |
+| macOS | `~/Library/Application Support/Comitra` | same |
 | Linux | `~/.config/Comitra` | `~/.local/share/Comitra` |
 
-`--portable` parametresi veya `COMITRA_HOME=/bir/klasör` ortam değişkeni de aynı işi yapar.
+The `--portable` option and the `COMITRA_HOME=/some/folder` environment variable do the same.
 
-## Kullanım
+## Usage
 
-1. İlk açılışta **Klasör ekle** ile repolarınızın bulunduğu klasörü seçin (ör. `~/projeler`).
-2. Comitra repoları bulur ve indeksler. İlerleme durum çubuğunda görünür.
-3. Arama kutusuna yazın veya soldaki filtre panelini kullanın.
+1. On first start, click **Add folder** and pick the folder that holds your repositories
+   (for example `~/projects`).
+2. Comitra finds and indexes the repositories. Progress is shown in the status bar.
+3. Type in the search box or use the filter panel on the left.
 
-### Sorgu sözdizimi
+### Query syntax
 
 ```
-ödeme hatası                  tüm kelimeler (aksan/büyük-küçük harf duyarsız)
-"ödeme hatası"                tam ifade
-login*                        ön ek
--wip  -"work in progress"     dışlama
-author:ahmet,ayse@firma.com   yazar veya ortak yazar   (yazar:)
-repo:billing                  repo adı/yolu içerir      (proje:)
-branch:main branch:feature/*  branch'ten erişilebilen   (dal:)
-hash:a1b2c3d                  hash (yalnızca hash yazmak da olur)
-file:*.py file:src/auth/      değişen dosya             (dosya:)  – dosya indeksi gerekir
-date:today|yesterday|7d|30d|month|year     (tarih:bugün|dün|buay|buyıl)
+payment error                  all words (case- and accent-insensitive)
+"payment error"                exact phrase
+login*                         prefix
+-wip  -"work in progress"      exclude
+author:alice,bob@example.com   author or co-author name / e-mail contains
+repo:billing                   repository name or path contains
+branch:main branch:feature/*   reachable from matching branches (wildcards)
+hash:a1b2c3d                   hash (typing a bare hash works too)
+file:*.py file:src/auth/       changed file – needs the file index (Settings)
+date:today|yesterday|7d|30d|month|year
 date:2026-11-10   date:2026-10-01..2026-10-31   date:2026-10
-after:2026-10-01 before:2026-11-01         after dahil, before hariç
-hour:09-12  hour:22-06        günün saati (yazarın saat diliminde)   (saat:)
-day:fri,sat  day:weekend      haftanın günü                          (gün:cuma, gün:haftasonu)
-merge:hide|only               merge commit'leri gizle / sadece onlar (merge:gizle|sadece)
-unreachable:include|only      hiçbir branch'te olmayan commit'ler
-sort:newest|oldest|relevance  sıralama                               (sırala:yeni|eski|alaka)
+after:2026-10-01 before:2026-11-01             after is inclusive, before is exclusive
+hour:09-12  hour:22-06         time of day (in the author's time zone)
+day:fri,sat  day:weekend       weekday
+merge:hide|only                hide merge commits / only merge commits
+unreachable:include|only       commits that are no longer on any branch
+sort:newest|oldest|relevance   sort order
 ```
 
-Örnek: `author:ahmet repo:billing branch:feature/* after:2026-10-01 before:2026-11-01 ödeme -wip`
+Example: `author:alice repo:billing branch:feature/* after:2026-10-01 before:2026-11-01 payment -wip`
 
-Aynı filtrede birden çok değer **VEYA**, farklı filtreler **VE** ile birleşir.
+Several values of the same filter are combined with **OR**; different filters with **AND**.
 
-### Klavye kısayolları
+### Keyboard shortcuts
 
-| Kısayol | İşlem |
+| Shortcut | Action |
 | --- | --- |
-| Ctrl/⌘ + K (veya F, L) | Aramaya odaklan |
-| Esc | Aramayı temizle |
-| ↓ | Arama kutusundan sonuçlara geç |
-| F5 / Shift + F5 | İndeksi güncelle / fetch ile güncelle |
-| Ctrl/⌘ + S | Aramayı kaydet |
-| Ctrl/⌘ + E | Sonuçları dışa aktar |
-| Ctrl/⌘ + Shift + C | Hash'i kopyala |
-| Ctrl/⌘ + Shift + O / T / E | Klasörde / terminalde / editörde aç |
-| Ctrl/⌘ + 0 / 1 / 2 / 3 | Gruplama: yok / repo / yazar / gün |
-| Ctrl/⌘ + , | Ayarlar |
+| Ctrl/⌘ + K (or F, L) | Focus search |
+| Esc | Clear search |
+| ↓ | Move from the search box to the results |
+| F5 / Shift + F5 | Update the index / update with fetch |
+| Ctrl/⌘ + S | Save search |
+| Ctrl/⌘ + E | Export results |
+| Ctrl/⌘ + Shift + C | Copy hash |
+| Ctrl/⌘ + Shift + O / T / E | Open in file manager / terminal / editor |
+| Ctrl/⌘ + 0 / 1 / 2 / 3 | Group by: none / repository / author / day |
+| Ctrl/⌘ + , | Settings |
 
-### Komut satırı
+### Command line
 
-Kurulumlu ve taşınabilir paketlerde `comitra-cli` aracı bulunur (AppImage'da
-`./Comitra.AppImage cli …`). Kaynaktan çalıştırırken `python -m comitra …` kullanılır.
+Installed and portable packages include a `comitra-cli` tool (with the AppImage use
+`./Comitra.AppImage cli …`). From source, use `python -m comitra …`.
 
 ```bash
-comitra-cli add ~/projeler            # taranacak klasör ekle
-comitra-cli update [--fetch] [--full] # tara ve indeksle
-comitra-cli search 'author:ahmet date:7d ödeme' --limit 20
-comitra-cli search 'repo:billing' --format csv > sonuc.csv
+comitra-cli add ~/projects             # add a folder to scan
+comitra-cli update [--fetch] [--full]  # scan and index
+comitra-cli search 'author:alice date:7d payment' --limit 20
+comitra-cli search 'repo:billing' --format csv > results.csv
 comitra-cli search 'merge:only' --group repo
-comitra-cli repos                     # indeksli repolar
-comitra-cli stats                     # istatistikler
-comitra-cli info                      # veri konumu, git ve SQLite sürümü
+comitra-cli repos                      # indexed repositories
+comitra-cli stats                      # statistics
+comitra-cli info                       # data location, git and SQLite versions
 ```
 
-## Kaynaktan çalıştırma
+## Running from source
 
-Python 3.11 veya üstü gerekir.
+Requires Python 3.11 or newer.
 
 ```bash
-git clone <repo-url> comitra && cd comitra
+git clone https://github.com/OguzcanOzdemir/Comitra.git
+cd Comitra
 python -m venv .venv
 source .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
-python -m comitra                    # arayüz
-python -m pytest                     # testler
+python -m comitra                    # GUI
+python -m pytest                     # tests
 ```
 
-Linux'ta Qt için sistem kütüphaneleri gerekebilir:
+On Linux, Qt may need a few system libraries:
 `sudo apt install libegl1 libxkbcommon-x11-0 libxcb-cursor0`.
 
-## Paket üretme
+## Building packages
 
 ```bash
 pip install . pyinstaller pillow
 python packaging/build.py
 ```
 
-Çıktılar `dist/release/` klasörüne yazılır. Her platformun paketi kendi işletim sisteminde
-üretilir:
+Output goes to `dist/release/`. Each platform's packages are built on that platform:
 
-- **Windows:** PyInstaller + [Inno Setup 6](https://jrsoftware.org/isinfo.php) → `setup.exe`, taşınabilir `zip`
-- **macOS:** PyInstaller → `.app`, `hdiutil` → `.dmg`, taşınabilir `zip`
-- **Linux:** PyInstaller → taşınabilir `tar.gz`, `appimagetool` → `AppImage`
+- **Windows:** PyInstaller + [Inno Setup 6](https://jrsoftware.org/isinfo.php) → `setup.exe`, portable `zip`
+- **macOS:** PyInstaller → `.app`, `hdiutil` → `.dmg`, portable `zip`
+- **Linux:** PyInstaller → portable `tar.gz`, `appimagetool` → `AppImage`
 
-GitHub Actions bunu otomatik yapar: her push'ta testler üç işletim sisteminde çalışır ve
-paketler artifact olarak üretilir (`.github/workflows/ci.yml`). `v1.2.3` biçiminde bir
-tag push edildiğinde tüm paketler GitHub Release'e eklenir (`release.yml`).
+GitHub Actions does this automatically: every push runs the tests on all three operating
+systems and builds the packages as artifacts (`.github/workflows/ci.yml`). Pushing a tag
+such as `v1.2.3` attaches every package to a GitHub Release (`release.yml`).
 
-## Proje yapısı
+## Project layout
 
 ```
 comitra/
-  core/          Qt'den bağımsız çekirdek (tarayıcı, indeksleyici, arama, sorgu dili…)
-  ui/            PySide6 arayüzü
-  cli.py         komut satırı
-  config.py      ayarlar, veri klasörleri, taşınabilir mod
-  i18n.py        Türkçe/İngilizce metinler
-packaging/       PyInstaller spec, Inno Setup, AppImage, derleme betiği
-tests/           pytest testleri (gerçek git repolarıyla)
-site/            GitHub Pages web sitesi (tools/build_site.py ile üretilir)
-docs/DESIGN.md   tasarım kararları
-TASKS.md         görev listesi ve yol haritası
+  core/          Qt-independent core (scanner, indexer, search, query language…)
+  ui/            PySide6 user interface
+  cli.py         command line
+  config.py      settings, data folders, portable mode
+packaging/       PyInstaller spec, Inno Setup, AppImage, build script
+tests/           pytest tests (against real git repositories)
+site/            GitHub Pages website (generated by tools/build_site.py)
+docs/DESIGN.md   design decisions
+TASKS.md         task list and roadmap
 ```
 
-Tasarım kararlarının gerekçeleri (branch üyeliği, Türkçe arama, force-push yönetimi, fetch
-güvenliği vb.) için [docs/DESIGN.md](docs/DESIGN.md) belgesine bakın.
+See [docs/DESIGN.md](docs/DESIGN.md) for the reasoning behind the design (branch
+membership, text normalization, force-push handling, fetch safety and more).
 
-## Gizlilik
+## Privacy
 
-Comitra hiçbir ağ isteği yapmaz. Telemetri ve otomatik güncelleme yoktur. Tek istisna,
-ayarlardan sizin açtığınız `git fetch` seçeneğidir; o da yalnızca kendi git sunucularınıza
-bağlanır. İndeks yalnızca sizin bilgisayarınızda tutulur.
+Comitra makes no network requests. There is no telemetry and no automatic update check.
+The only exception is the optional `git fetch` you can turn on in Settings, which only
+talks to your own git servers. The index is stored only on your computer.
 
-## Lisans
+## License
 
-MIT. Arayüz, LGPLv3 lisanslı Qt for Python (PySide6) kullanır.
+MIT. The user interface uses Qt for Python (PySide6), licensed under the LGPLv3.

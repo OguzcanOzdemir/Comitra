@@ -15,7 +15,6 @@ from PySide6.QtWidgets import (
 
 from .. import APP_NAME, __version__, config
 from ..core import db, query as querymod
-from ..i18n import tr
 from .results_model import fmt_time
 from .workers import Task, compute_stats
 
@@ -50,7 +49,7 @@ def _item(value, align_right: bool = False, data=None) -> QTableWidgetItem:
 class SettingsDialog(QDialog):
     def __init__(self, settings: config.Settings, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(tr("Settings"))
+        self.setWindowTitle("Settings")
         self.resize(640, 560)
         self.s = settings
         tabs = QTabWidget()
@@ -58,22 +57,22 @@ class SettingsDialog(QDialog):
         # Folders
         w = QWidget()
         f = QVBoxLayout(w)
-        f.addWidget(QLabel(tr("Folders to scan")))
+        f.addWidget(QLabel("Folders to scan"))
         self.roots = QListWidget()
         self.roots.addItems(settings.roots)
         f.addWidget(self.roots)
         row = QHBoxLayout()
-        b_add, b_rm = QPushButton(tr("Add…")), QPushButton(tr("Remove"))
+        b_add, b_rm = QPushButton("Add…"), QPushButton("Remove")
         b_add.clicked.connect(self._add_root)
         b_rm.clicked.connect(lambda: [self.roots.takeItem(self.roots.row(i)) for i in self.roots.selectedItems()])
         row.addWidget(b_add)
         row.addWidget(b_rm)
         row.addStretch(1)
         f.addLayout(row)
-        f.addWidget(QLabel(tr("Excluded folder names (one per line)")))
+        f.addWidget(QLabel("Excluded folder names (one per line)"))
         self.excl_names = QPlainTextEdit("\n".join(settings.exclude_names))
         f.addWidget(self.excl_names)
-        f.addWidget(QLabel(tr("Excluded paths (one per line)")))
+        f.addWidget(QLabel("Excluded paths (one per line)"))
         self.excl_paths = QPlainTextEdit("\n".join(settings.excluded_paths))
         self.excl_paths.setMaximumHeight(80)
         f.addWidget(self.excl_paths)
@@ -81,11 +80,11 @@ class SettingsDialog(QDialog):
         self.max_depth = QSpinBox(minimum=1, maximum=50, value=settings.max_depth)
         self.follow = QCheckBox(checked=settings.follow_symlinks)
         self.bare = QCheckBox(checked=settings.include_bare)
-        form.addRow(tr("Maximum folder depth"), self.max_depth)
-        form.addRow(tr("Follow symbolic links"), self.follow)
-        form.addRow(tr("Include bare repositories"), self.bare)
+        form.addRow("Maximum folder depth", self.max_depth)
+        form.addRow("Follow symbolic links", self.follow)
+        form.addRow("Include bare repositories", self.bare)
         f.addLayout(form)
-        tabs.addTab(w, tr("Folders"))
+        tabs.addTab(w, "Folders")
 
         # Indexing
         w = QWidget()
@@ -93,51 +92,45 @@ class SettingsDialog(QDialog):
         self.workers = QSpinBox(minimum=1, maximum=32, value=settings.workers)
         self.tags = QCheckBox(checked=settings.include_tags)
         self.remotes = QCheckBox(checked=settings.include_remotes)
-        self.files = QCheckBox(tr("Index changed file paths (enables file: search, slower first indexing)"),
+        self.files = QCheckBox("Index changed file paths (enables file: search, slower first indexing)",
                                checked=settings.index_files)
-        self.keep = QCheckBox(tr("Keep commits that are no longer on any branch"), checked=settings.keep_unreachable)
-        self.fetch = QCheckBox(tr("Run 'git fetch --all' before updating (needs network)"),
+        self.keep = QCheckBox("Keep commits that are no longer on any branch", checked=settings.keep_unreachable)
+        self.fetch = QCheckBox("Run 'git fetch --all' before updating (needs network)",
                                checked=settings.fetch_before_scan)
         self.fetch_timeout = QSpinBox(minimum=5, maximum=3600, value=settings.fetch_timeout)
         self.fetch_workers = QSpinBox(minimum=1, maximum=16, value=settings.fetch_workers)
         self.on_start = QCheckBox(checked=settings.update_on_start)
         self.auto_min = QSpinBox(minimum=0, maximum=1440, value=settings.auto_update_minutes)
         self.watch = QCheckBox(checked=settings.watch_repos)
-        form.addRow(tr("Parallel workers"), self.workers)
-        form.addRow(tr("Index tags"), self.tags)
-        form.addRow(tr("Index remote branches"), self.remotes)
+        form.addRow("Parallel workers", self.workers)
+        form.addRow("Index tags", self.tags)
+        form.addRow("Index remote branches", self.remotes)
         form.addRow(self.files)
         form.addRow(self.keep)
         form.addRow(self.fetch)
-        form.addRow(tr("Fetch timeout (seconds)"), self.fetch_timeout)
-        form.addRow(tr("Parallel fetches"), self.fetch_workers)
-        form.addRow(tr("Update index on start"), self.on_start)
-        form.addRow(tr("Update automatically every (minutes, 0 = off)"), self.auto_min)
-        form.addRow(tr("Watch repositories for changes"), self.watch)
-        tabs.addTab(w, tr("Indexing"))
+        form.addRow("Fetch timeout (seconds)", self.fetch_timeout)
+        form.addRow("Parallel fetches", self.fetch_workers)
+        form.addRow("Update index on start", self.on_start)
+        form.addRow("Update automatically every (minutes, 0 = off)", self.auto_min)
+        form.addRow("Watch repositories for changes", self.watch)
+        tabs.addTab(w, "Indexing")
 
         # Search & display
         w = QWidget()
         form = QFormLayout(w)
         self.basis = QComboBox()
-        self.basis.addItem(tr("Author date (when it was written)"), "author")
-        self.basis.addItem(tr("Commit date (when it was applied)"), "committer")
+        self.basis.addItem("Author date (when it was written)", "author")
+        self.basis.addItem("Commit date (when it was applied)", "committer")
         self.basis.setCurrentIndex(max(0, self.basis.findData(settings.date_basis)))
         self.show_unreach = QCheckBox(checked=settings.show_unreachable)
         self.theme = QComboBox()
         for k, label in (("system", "System"), ("light", "Light"), ("dark", "Dark")):
-            self.theme.addItem(tr(label), k)
+            self.theme.addItem(label, k)
         self.theme.setCurrentIndex(max(0, self.theme.findData(settings.theme)))
-        self.lang = QComboBox()
-        for k, label in (("auto", tr("Automatic")), ("tr", "Türkçe"), ("en", "English")):
-            self.lang.addItem(label, k)
-        self.lang.setCurrentIndex(max(0, self.lang.findData(settings.language)))
-        form.addRow(tr("Date used for filters and sorting"), self.basis)
-        form.addRow(tr("Show commits no longer on any branch by default"), self.show_unreach)
-        form.addRow(tr("Theme"), self.theme)
-        form.addRow(tr("Language"), self.lang)
-        form.addRow(QLabel(f"<i>{tr('Restart required for language change.')}</i>"))
-        tabs.addTab(w, tr("Search & display"))
+        form.addRow("Date used for filters and sorting", self.basis)
+        form.addRow("Show commits no longer on any branch by default", self.show_unreach)
+        form.addRow("Theme", self.theme)
+        tabs.addTab(w, "Search & display")
 
         # Integrations
         w = QWidget()
@@ -145,23 +138,23 @@ class SettingsDialog(QDialog):
         self.git_path = QLineEdit(settings.git_path)
         gp = QHBoxLayout()
         gp.addWidget(self.git_path)
-        b = QPushButton(tr("Browse…"))
+        b = QPushButton("Browse…")
         b.clicked.connect(self._browse_git)
         gp.addWidget(b)
         self.term_cmd = QLineEdit(settings.terminal_command, placeholderText="wt -d {path}  |  open -a iTerm {path}  |  konsole --workdir {path}")
         self.editor_cmd = QLineEdit(settings.editor_command, placeholderText="code {path}")
-        form.addRow(tr("git executable (empty = automatic)"), gp)
-        form.addRow(tr("Terminal command (empty = automatic, {path} = folder)"), self.term_cmd)
-        form.addRow(tr("Editor command (empty = automatic, {path} = folder)"), self.editor_cmd)
+        form.addRow("git executable (empty = automatic)", gp)
+        form.addRow("Terminal command (empty = automatic, {path} = folder)", self.term_cmd)
+        form.addRow("Editor command (empty = automatic, {path} = folder)", self.editor_cmd)
         loc = QLabel(f"{config.db_path()}<br>{config.settings_path()}")
         loc.setTextInteractionFlags(Qt.TextSelectableByMouse)
         loc.setWordWrap(True)
-        form.addRow(tr("Data location"), loc)
-        form.addRow(tr("Portable mode"), QLabel(tr("Yes") if config.is_portable() else tr("No")))
-        compact = QPushButton(tr("Compact database"))
+        form.addRow("Data location", loc)
+        form.addRow("Portable mode", QLabel("Yes" if config.is_portable() else "No"))
+        compact = QPushButton("Compact database")
         compact.clicked.connect(self._compact)
         form.addRow(compact)
-        tabs.addTab(w, tr("Integrations"))
+        tabs.addTab(w, "Integrations")
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.accept)
@@ -171,7 +164,7 @@ class SettingsDialog(QDialog):
         lay.addWidget(buttons)
 
     def _add_root(self) -> None:
-        d = QFileDialog.getExistingDirectory(self, tr("Choose a folder with git repositories"), os.path.expanduser("~"))
+        d = QFileDialog.getExistingDirectory(self, "Choose a folder with git repositories", os.path.expanduser("~"))
         if d:
             d = os.path.normpath(d)
             if d not in [self.roots.item(i).text() for i in range(self.roots.count())]:
@@ -188,7 +181,7 @@ class SettingsDialog(QDialog):
             db.vacuum(conn)
         finally:
             conn.close()
-        QMessageBox.information(self, APP_NAME, tr("Database compacted."))
+        QMessageBox.information(self, APP_NAME, "Database compacted.")
 
     def apply(self) -> config.Settings:
         s = self.s
@@ -212,7 +205,6 @@ class SettingsDialog(QDialog):
         s.date_basis = self.basis.currentData()
         s.show_unreachable = self.show_unreach.isChecked()
         s.theme = self.theme.currentData()
-        s.language = self.lang.currentData()
         s.git_path = self.git_path.text().strip()
         s.terminal_command = self.term_cmd.text().strip()
         s.editor_command = self.editor_cmd.text().strip()
@@ -230,9 +222,9 @@ class ReposDialog(QDialog):
     def __init__(self, conn, parent=None):
         super().__init__(parent)
         self.conn = conn
-        self.setWindowTitle(tr("Repositories"))
+        self.setWindowTitle("Repositories")
         self.resize(900, 520)
-        self.table = _table([tr("Name"), tr("Commits"), tr("Status"), tr("Last indexed"), tr("Path")])
+        self.table = _table(["Name", "Commits", "Status", "Last indexed", "Path"])
         self.table.setSortingEnabled(True)
         self.table.doubleClicked.connect(self._search_selected)
         lay = QVBoxLayout(self)
@@ -241,16 +233,16 @@ class ReposDialog(QDialog):
         lay.addWidget(self.table)
         row = QHBoxLayout()
         for label, fn in (
-            (tr("Search in this repository"), self._search_selected),
-            (tr("Re-index selected"), self._reindex),
-            (tr("Remove from index"), self._remove),
-            (tr("Exclude and remove"), self._exclude),
+            ("Search in this repository", self._search_selected),
+            ("Re-index selected", self._reindex),
+            ("Remove from index", self._remove),
+            ("Exclude and remove", self._exclude),
         ):
             b = QPushButton(label)
             b.clicked.connect(fn)
             row.addWidget(b)
         row.addStretch(1)
-        close = QPushButton(tr("Close"))
+        close = QPushButton("Close")
         close.clicked.connect(self.accept)
         row.addWidget(close)
         lay.addLayout(row)
@@ -265,16 +257,16 @@ class ReposDialog(QDialog):
             total += r["commit_count"]
             self.table.setItem(i, 0, _item(r["name"], data=r["id"]))
             self.table.setItem(i, 1, _item(r["commit_count"], True))
-            st = _item(tr(r["status"]))
+            st = _item(r["status"])
             if r["status"] in ("error", "missing"):
                 st.setForeground(QColor("#d1242f"))
                 st.setToolTip(r["last_error"] or "")
             self.table.setItem(i, 2, st)
-            self.table.setItem(i, 3, _item(fmt_time(r["last_indexed_at"]) if r["last_indexed_at"] else tr("never")))
+            self.table.setItem(i, 3, _item(fmt_time(r["last_indexed_at"]) if r["last_indexed_at"] else "never"))
             self.table.setItem(i, 4, _item(r["path"]))
         self.table.setSortingEnabled(True)
         self.table.resizeColumnsToContents()
-        self.summary.setText(tr("{n} repositories, {c} commits").format(n=len(rows), c=total))
+        self.summary.setText("{n} repositories, {c} commits".format(n=len(rows), c=total))
 
     def _selected(self) -> list[tuple[int, str, str]]:
         out = []
@@ -298,7 +290,7 @@ class ReposDialog(QDialog):
         sel = self._selected()
         if not sel:
             return False
-        if QMessageBox.question(self, APP_NAME, tr("Remove {n} repositories and their commits from the index?").format(n=len(sel))) != QMessageBox.Yes:
+        if QMessageBox.question(self, APP_NAME, "Remove {n} repositories and their commits from the index?".format(n=len(sel))) != QMessageBox.Yes:
             return False
         for rid, _, _ in sel:
             db.delete_repo(self.conn, rid)
@@ -317,28 +309,28 @@ class ReposDialog(QDialog):
 class SummaryDialog(QDialog):
     def __init__(self, report, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(tr("Update report"))
+        self.setWindowTitle("Update report")
         self.resize(900, 500)
         sm = report.summary
         lay = QVBoxLayout(self)
         lay.addWidget(QLabel(
-            tr("{u} updated, {s} unchanged, {e} errors, {m} missing, {f} fetch problems").format(
+            "{u} updated, {s} unchanged, {e} errors, {m} missing, {f} fetch problems".format(
                 u=sm.count("updated"), s=sm.count("unchanged"), e=sm.count("error"), m=sm.count("missing"),
                 f=len(sm.fetch_problems))
-            + f" — {sm.new_commits} {tr('New').lower()}, {sm.seconds:.1f} s"
+            + f" — {sm.new_commits} new, {sm.seconds:.1f} s"
         ))
-        t = _table([tr("Repository"), tr("Status"), tr("New"), tr("Unreachable"), tr("Fetch"), tr("Seconds"), tr("Message")])
+        t = _table(["Repository", "Status", "New", "Unreachable", "Fetch", "Seconds", "Message"])
         t.setRowCount(len(sm.results))
         for i, r in enumerate(sm.results):
             t.setItem(i, 0, _item(r.name))
             t.item(i, 0).setToolTip(r.path)
-            st = _item(tr(r.status))
+            st = _item(r.status)
             if r.status in ("error", "missing"):
                 st.setForeground(QColor("#d1242f"))
             t.setItem(i, 1, st)
             t.setItem(i, 2, _item(r.new_commits, True))
             t.setItem(i, 3, _item(r.unreachable, True))
-            fetch = "—" if r.fetch is None else (tr("ok") if r.fetch.ok else tr(r.fetch.reason))
+            fetch = "—" if r.fetch is None else ("ok" if r.fetch.ok else r.fetch.reason)
             fi = _item(fetch)
             if r.fetch is not None and not r.fetch.ok:
                 fi.setForeground(QColor("#d29922"))
@@ -352,7 +344,7 @@ class SummaryDialog(QDialog):
         t.setSortingEnabled(True)
         lay.addWidget(t)
         if report.scan.errors:
-            lay.addWidget(QLabel(tr("Scan problems")))
+            lay.addWidget(QLabel("Scan problems"))
             box = QPlainTextEdit(readOnly=True)
             box.setPlainText("\n".join(f"{p}: {e}" for p, e in report.scan.errors))
             box.setMaximumHeight(100)
@@ -371,19 +363,19 @@ class SavedSearchesDialog(QDialog):
     def __init__(self, conn, parent=None):
         super().__init__(parent)
         self.conn = conn
-        self.setWindowTitle(tr("Saved searches"))
+        self.setWindowTitle("Saved searches")
         self.resize(700, 400)
-        self.table = _table([tr("Name"), tr("Query")])
+        self.table = _table(["Name", "Query"])
         self.table.doubleClicked.connect(self._run)
         lay = QVBoxLayout(self)
         lay.addWidget(self.table)
         row = QHBoxLayout()
-        for label, fn in ((tr("Run"), self._run), (tr("Delete"), self._delete)):
+        for label, fn in (("Run", self._run), ("Delete", self._delete)):
             b = QPushButton(label)
             b.clicked.connect(fn)
             row.addWidget(b)
         row.addStretch(1)
-        c = QPushButton(tr("Close"))
+        c = QPushButton("Close")
         c.clicked.connect(self.accept)
         row.addWidget(c)
         lay.addLayout(row)
@@ -417,7 +409,7 @@ class SavedSearchesDialog(QDialog):
 
 
 def save_search(conn, parent, query_text: str) -> str | None:
-    name, ok = QInputDialog.getText(parent, tr("Save search…"), tr("Name for this search:"))
+    name, ok = QInputDialog.getText(parent, "Save search…", "Name for this search:")
     name = name.strip()
     if not ok or not name:
         return None
@@ -453,12 +445,12 @@ class BarDelegate(QStyledItemDelegate):
 class StatsDialog(QDialog):
     def __init__(self, ids: list[int] | None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(tr("Statistics"))
+        self.setWindowTitle("Statistics")
         self.resize(820, 600)
         self.ids = ids
         lay = QVBoxLayout(self)
         top = QHBoxLayout()
-        self.only_results = QCheckBox(tr("Current results only"))
+        self.only_results = QCheckBox("Current results only")
         self.only_results.setEnabled(ids is not None)
         self.only_results.toggled.connect(self.reload)
         top.addWidget(self.only_results)
@@ -466,20 +458,20 @@ class StatsDialog(QDialog):
         lay.addLayout(top)
         self.tabs = QTabWidget()
         lay.addWidget(self.tabs)
-        self.overview = QLabel(tr("Loading…"))
+        self.overview = QLabel("Loading…")
         self.overview.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         self.overview.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        self.t_repo = _table([tr("Repository"), tr("Count")])
-        self.t_author = _table([tr("Author"), tr("E-mail"), tr("Count")])
-        self.t_month = _table([tr("Month"), tr("Count")])
-        self.t_wday = _table([tr("Day"), tr("Count")])
-        self.t_hour = _table([tr("Hour"), tr("Count")])
-        self.tabs.addTab(self.overview, tr("Overview"))
-        self.tabs.addTab(self.t_repo, tr("By repository"))
-        self.tabs.addTab(self.t_author, tr("By author"))
-        self.tabs.addTab(self.t_month, tr("By month"))
-        self.tabs.addTab(self.t_wday, tr("By weekday"))
-        self.tabs.addTab(self.t_hour, tr("By hour"))
+        self.t_repo = _table(["Repository", "Count"])
+        self.t_author = _table(["Author", "E-mail", "Count"])
+        self.t_month = _table(["Month", "Count"])
+        self.t_wday = _table(["Day", "Count"])
+        self.t_hour = _table(["Hour", "Count"])
+        self.tabs.addTab(self.overview, "Overview")
+        self.tabs.addTab(self.t_repo, "By repository")
+        self.tabs.addTab(self.t_author, "By author")
+        self.tabs.addTab(self.t_month, "By month")
+        self.tabs.addTab(self.t_wday, "By weekday")
+        self.tabs.addTab(self.t_hour, "By hour")
         bb = QDialogButtonBox(QDialogButtonBox.Close)
         bb.rejected.connect(self.reject)
         lay.addWidget(bb)
@@ -488,7 +480,7 @@ class StatsDialog(QDialog):
 
     def reload(self, *_):
         ids = self.ids if self.only_results.isChecked() else None
-        self.overview.setText(tr("Loading…"))
+        self.overview.setText("Loading…")
         t = Task("stats", compute_stats, ids)
         t.signals.done.connect(self._show)
         t.signals.failed.connect(lambda _k, e: self.overview.setText(e))
@@ -509,30 +501,30 @@ class StatsDialog(QDialog):
         fmt = lambda ts: fmt_time(ts) if ts else "—"  # noqa: E731
         self.overview.setText(
             f"<table cellpadding='4'>"
-            f"<tr><td>{tr('Total commits')}</td><td><b>{st.total_commits}</b></td></tr>"
-            f"<tr><td>{tr('Repositories')}</td><td><b>{st.total_repos}</b></td></tr>"
-            f"<tr><td>{tr('Authors')}</td><td><b>{st.total_authors}</b></td></tr>"
-            f"<tr><td>{tr('Commits no longer on any branch')}</td><td><b>{st.unreachable}</b></td></tr>"
-            f"<tr><td>{tr('First commit')}</td><td>{fmt(st.first_time)}</td></tr>"
-            f"<tr><td>{tr('Last commit')}</td><td>{fmt(st.last_time)}</td></tr></table>"
+            f"<tr><td>Total commits</td><td><b>{st.total_commits}</b></td></tr>"
+            f"<tr><td>Repositories</td><td><b>{st.total_repos}</b></td></tr>"
+            f"<tr><td>Authors</td><td><b>{st.total_authors}</b></td></tr>"
+            f"<tr><td>Commits no longer on any branch</td><td><b>{st.unreachable}</b></td></tr>"
+            f"<tr><td>First commit</td><td>{fmt(st.first_time)}</td></tr>"
+            f"<tr><td>Last commit</td><td>{fmt(st.last_time)}</td></tr></table>"
         )
         self._fill(self.t_repo, st.by_repo, 1)
         self._fill(self.t_author, st.by_author, 2)
         self._fill(self.t_month, list(reversed(st.by_month)), 1)
-        days = [tr(d) for d in ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")]
+        days = [d for d in ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")]
         self._fill(self.t_wday, [(days[d], n) for d, n in st.by_weekday], 1)
         self._fill(self.t_hour, [(f"{h:02d}:00", n) for h, n in st.by_hour], 1)
 
 
 # -- help ---------------------------------------------------------------------------
 
-SYNTAX_HELP_EN = """<h3>Query syntax</h3>
+SYNTAX_HELP = """<h3>Query syntax</h3>
 <table cellpadding="3">
-<tr><td><code>payment error</code></td><td>all words (accent- and case-insensitive: <i>odeme</i> finds <i>Ödeme</i>)</td></tr>
+<tr><td><code>payment error</code></td><td>all words (case- and accent-insensitive: <i>cafe</i> finds <i>Café</i>)</td></tr>
 <tr><td><code>"payment error"</code></td><td>exact phrase</td></tr>
 <tr><td><code>login*</code></td><td>prefix</td></tr>
 <tr><td><code>-wip</code>, <code>-"work in progress"</code></td><td>exclude</td></tr>
-<tr><td><code>author:ahmet,ayse@firma.com</code></td><td>author or co-author name / e-mail contains</td></tr>
+<tr><td><code>author:alice,bob@example.com</code></td><td>author or co-author name / e-mail contains</td></tr>
 <tr><td><code>repo:billing</code></td><td>repository name or path contains</td></tr>
 <tr><td><code>branch:main branch:feature/*</code></td><td>commits reachable from matching branches (wildcards)</td></tr>
 <tr><td><code>hash:a1b2c3d</code></td><td>full or short hash (a bare hash also works)</td></tr>
@@ -547,28 +539,6 @@ SYNTAX_HELP_EN = """<h3>Query syntax</h3>
 <tr><td><code>sort:newest|oldest|relevance</code></td><td>sort order</td></tr>
 </table>
 <p>Several values of the same filter are OR-ed, different filters are AND-ed.</p>"""
-
-SYNTAX_HELP_TR = """<h3>Sorgu sözdizimi</h3>
-<table cellpadding="3">
-<tr><td><code>ödeme hatası</code></td><td>tüm kelimeler (büyük/küçük harf ve aksan duyarsız: <i>odeme</i> → <i>Ödeme</i>)</td></tr>
-<tr><td><code>"ödeme hatası"</code></td><td>tam ifade</td></tr>
-<tr><td><code>login*</code></td><td>ön ek</td></tr>
-<tr><td><code>-wip</code>, <code>-"work in progress"</code></td><td>dışlama</td></tr>
-<tr><td><code>author:ahmet,ayse@firma.com</code> (<code>yazar:</code>)</td><td>yazar veya ortak yazar adı / e-postası içerir</td></tr>
-<tr><td><code>repo:billing</code> (<code>proje:</code>)</td><td>repo adı veya yolu içerir</td></tr>
-<tr><td><code>branch:main branch:feature/*</code> (<code>dal:</code>)</td><td>eşleşen branch'lerden erişilebilen commit'ler (joker karakter)</td></tr>
-<tr><td><code>hash:a1b2c3d</code></td><td>tam veya kısa hash (yalnız hash yazmak da çalışır)</td></tr>
-<tr><td><code>file:*.py file:src/auth/</code> (<code>dosya:</code>)</td><td>değişen dosya (dosya indeksi gerekir)</td></tr>
-<tr><td><code>date:bugün|dün|7d|30d|buay|buyıl</code> (<code>tarih:</code>)</td><td>hazır tarih seçenekleri</td></tr>
-<tr><td><code>date:2026-11-10</code>, <code>date:2026-10-01..2026-10-31</code>, <code>date:2026-10</code></td><td>gün, aralık, ay</td></tr>
-<tr><td><code>after:2026-10-01 before:2026-11-01</code></td><td>after dahil, before hariç</td></tr>
-<tr><td><code>hour:09-12</code>, <code>saat:22-06</code></td><td>günün saati (yazarın saat diliminde)</td></tr>
-<tr><td><code>day:cuma</code>, <code>gün:haftasonu</code></td><td>haftanın günü</td></tr>
-<tr><td><code>merge:gizle|sadece</code></td><td>merge commit'ler</td></tr>
-<tr><td><code>unreachable:include|only</code> (<code>kayıp:</code>)</td><td>artık hiçbir branch'te olmayan commit'ler</td></tr>
-<tr><td><code>sort:newest|oldest|relevance</code> (<code>sırala:yeni|eski|alaka</code>)</td><td>sıralama</td></tr>
-</table>
-<p>Aynı filtrede birden çok değer VEYA, farklı filtreler VE ile birleşir.</p>"""
 
 SHORTCUTS = [
     ("Ctrl/⌘+K, Ctrl/⌘+F", "Focus search"),
@@ -587,18 +557,16 @@ SHORTCUTS = [
 
 
 def show_syntax(parent) -> None:
-    from ..i18n import current_language
-
     box = QMessageBox(parent)
-    box.setWindowTitle(tr("Query syntax"))
+    box.setWindowTitle("Query syntax")
     box.setTextFormat(Qt.RichText)
-    box.setText(SYNTAX_HELP_TR if current_language() == "tr" else SYNTAX_HELP_EN)
+    box.setText(SYNTAX_HELP)
     box.exec()
 
 
 def show_shortcuts(parent) -> None:
-    rows = "".join(f"<tr><td><b>{k}</b></td><td>{tr(v)}</td></tr>" for k, v in SHORTCUTS)
-    QMessageBox.information(parent, tr("Keyboard shortcuts"), f"<table cellpadding='3'>{rows}</table>")
+    rows = "".join(f"<tr><td><b>{k}</b></td><td>{v}</td></tr>" for k, v in SHORTCUTS)
+    QMessageBox.information(parent, "Keyboard shortcuts", f"<table cellpadding='3'>{rows}</table>")
 
 
 def show_about(parent) -> None:
@@ -607,10 +575,10 @@ def show_about(parent) -> None:
 
     QMessageBox.about(
         parent,
-        tr("About Comitra"),
-        f"<h3>{APP_NAME}</h3><p>{tr('Version {v}').format(v=__version__)}</p>"
-        f"<p>{tr('Comitra – search commits across all your local git repositories.')}</p>"
-        f"<p>{tr('Works fully offline. Your data never leaves this computer.')}</p>"
+        "About Comitra",
+        f"<h3>{APP_NAME}</h3><p>{'Version {v}'.format(v=__version__)}</p>"
+        f"<p>Comitra – search commits across all your local git repositories.</p>"
+        f"<p>Works fully offline. Your data never leaves this computer.</p>"
         f"<p style='color:gray'>{gitcmd.git_version() or 'git: —'}<br>SQLite {sqlite3.sqlite_version}</p>",
     )
 

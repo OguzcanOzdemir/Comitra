@@ -25,10 +25,10 @@ class Repo:
         e = dict(os.environ)
         e.update(
             {
-                "GIT_AUTHOR_NAME": "Ahmet Yılmaz",
-                "GIT_AUTHOR_EMAIL": "ahmet@firma.com",
-                "GIT_COMMITTER_NAME": "Ahmet Yılmaz",
-                "GIT_COMMITTER_EMAIL": "ahmet@firma.com",
+                "GIT_AUTHOR_NAME": "Alice Smith",
+                "GIT_AUTHOR_EMAIL": "alice@example.com",
+                "GIT_COMMITTER_NAME": "Alice Smith",
+                "GIT_COMMITTER_EMAIL": "alice@example.com",
                 "GIT_CONFIG_GLOBAL": self.gitconfig,
                 "GIT_CONFIG_NOSYSTEM": "1",
             }

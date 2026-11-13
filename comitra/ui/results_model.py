@@ -11,7 +11,6 @@ from PySide6.QtWidgets import QStyle, QStyledItemDelegate, QStyleOptionViewItem
 
 from ..core import search
 from ..core.textnorm import highlight_html
-from ..i18n import tr
 from . import theme
 
 COLS = ["Date", "Repo", "Author", "Message", "Branch / ref", "Hash"]
@@ -115,7 +114,7 @@ class ResultsModel(QAbstractTableModel):
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            return tr(COLS[section])
+            return COLS[section]
         return None
 
     def flags(self, index):

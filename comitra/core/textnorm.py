@@ -1,8 +1,9 @@
 """Text normalisation shared by indexing, querying and highlighting.
 
 Comitra does its own normalisation instead of relying on the FTS5 tokenizer's
-case folding, because the default folding gets Turkish wrong (I/ı/İ/i) and
-because search should be accent-insensitive ("odeme" finds "ödeme").
+case folding, because plain Unicode lower-casing is not 1:1 for some letters
+(e.g. dotted capital I) and because search should be accent-insensitive
+("cafe" finds "Café").
 
 The normalisation is *length preserving*: every input character maps to exactly
 one output character. That lets the highlighter find match positions in the
@@ -55,7 +56,7 @@ def _fold_char(ch: str) -> str:
 
 
 def normalize(text: str) -> str:
-    """Lower-case, fold Turkish dotted/dotless i and strip diacritics (1:1)."""
+    """Lower-case, fold dotted/dotless i variants and strip diacritics (1:1)."""
     if not text:
         return ""
     if text.isascii():

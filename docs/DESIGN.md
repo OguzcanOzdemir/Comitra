@@ -1,218 +1,223 @@
-# Comitra – Tasarım Belgesi
+# Comitra – Design Document
 
-Bu belge, ilk fikir dosyasındaki kırılgan noktaların nasıl yeniden tasarlandığını ve
-uygulamanın bugünkü mimarisini anlatır. Kodla birebir uyumludur. Bir karar
-değişirse önce bu belge güncellenmelidir.
+This document explains how the fragile parts of the original idea were redesigned and
+describes the current architecture. It matches the code; if a decision changes, update
+this document first.
 
-## 1. Mimari
+## 1. Architecture
 
 ```
                 ┌──────────── comitra/ui (PySide6) ────────────┐
                 │ MainWindow · FilterPanel · ResultsModel       │
                 │ DetailPanel · Dialogs · Workers (QThread)     │
                 └───────────────┬───────────────────────────────┘
-                                │ (yalnızca core'u çağırır)
-┌──────────────────────── comitra/core (Qt'den bağımsız) ───────────────────────┐
-│ scanner   → klasörleri gezer, repoları bulur (worktree/submodule/bare)         │
-│ gitcmd    → tüm git çağrıları: UTF-8, istem yok, kilit yok, zaman aşımı        │
-│ gitrepo   → ref listesi, log ayrıştırma, rev-list, diff                        │
-│ fetcher   → isteğe bağlı güvenli `git fetch`                                   │
-│ indexer   → ref tabanlı artımlı indeksleme, paralel işçiler, tek yazıcı        │
-│ db        → SQLite şeması, WAL, migration (PRAGMA user_version)                │
-│ query     → sorgu dili ayrıştırıcı ⇄ Query nesnesi (iki yönlü)                 │
-│ search    → Query → SQL, branch çözümleme, sıralama, gruplama                  │
-│ textnorm  → Türkçe/aksan normalizasyonu, vurgulama                             │
+                                │ (only calls into core)
+┌──────────────────────── comitra/core (no Qt dependency) ──────────────────────┐
+│ scanner   → walks folders, finds repos (worktrees/submodules/bare)             │
+│ gitcmd    → every git call: UTF-8, no prompts, no locks, timeouts              │
+│ gitrepo   → refs, log parsing, rev-list, diff                                  │
+│ fetcher   → optional safe `git fetch`                                          │
+│ indexer   → ref-based incremental indexing, parallel workers, single writer    │
+│ db        → SQLite schema, WAL, migrations (PRAGMA user_version)               │
+│ query     → query language parser ⇄ Query object (round-trip)                  │
+│ search    → Query → SQL, branch resolution, sorting, grouping                  │
+│ textnorm  → case/accent normalization, highlighting                            │
 │ stats, export, service                                                         │
 └────────────────────────────────────────────────────────────────────────────────┘
-comitra/cli.py → aynı core ile komut satırı arayüzü
+comitra/cli.py → command-line interface on top of the same core
 ```
 
-Çekirdekte Qt'ye bağımlılık yoktur. Bu sayede CLI, testler ve arayüz aynı kodu kullanır.
+The core has no Qt dependency, so the CLI, the tests and the GUI share the same code.
 
-## 2. Kırılgan noktalar ve çözümleri
+## 2. Fragile points and their solutions
 
-### 2.1 Branch üyeliği (en kritik sorun)
+### 2.1 Branch membership (the most critical problem)
 
-**Sorun:** `commit_branches(commit_id, branch_name)` tablosu, bir commit'i ondan türeyen
-*her* branch için ayrı satır olarak saklar. 500 bin commit ve 30 branch ≈ 15 milyon satır
-eder. Daha kötüsü: fast-forward merge'de yeni commit oluşmaz ama `main` artık feature
-commit'lerini de içerir. `rev-list --all --not <eski uçlar>` bu değişikliği göremediği
-için tablo sessizce eskir.
+**Problem:** a `commit_branches(commit_id, branch_name)` table stores one row for
+*every* branch that descends from a commit. 500k commits × 30 branches ≈ 15 million rows.
+Worse: a fast-forward merge creates no new commits, but `main` now contains the feature
+commits. `rev-list --all --not <old tips>` cannot see that change, so the table silently
+goes stale.
 
-**Çözüm:**
+**Solution:**
 
-- Commit başına branch listesi **saklanmaz**.
-- `refs` tablosu her reponun izlenen ref'lerini ve uç commit'lerini tutar.
-- Her commit, ilk bulunduğu ref'i (`first_ref`, `git log --source`) gösterim için saklar.
-- `branch:` filtresi sorgu anında çözülür: eşleşen ref'lerin uçlarından `git rev-list`
-  çalıştırılır ve sonuç `(repo, uç commit'ler)` anahtarıyla önbelleğe alınır. Branch
-  ilerlediğinde anahtar değiştiği için önbellek kendiliğinden geçersizleşir. 100 bin
-  commit'lik repoda soğuk önbellekle ~1 sn, sıcak önbellekle milisaniyeler sürer.
-- Repo klasörü erişilemezse (ör. disk takılı değilse) `first_ref` ile yaklaşık sonuç verilir
-  ve kullanıcı uyarılır.
-- Detay panelindeki "İçeren branch'ler" bilgisi `git for-each-ref --contains` ile anlık alınır.
+- Per-commit branch lists are **not stored**.
+- The `refs` table stores each repository's tracked refs and their tip commits.
+- Each commit stores the ref it was first discovered from (`first_ref`, via
+  `git log --source`) for display.
+- The `branch:` filter is resolved at query time: `git rev-list` runs from the tips of the
+  matching refs and the result is cached under the key `(repo, tip commits)`. When a
+  branch moves, the key changes and the cache entry is naturally replaced. About 1 s cold
+  and milliseconds warm on a 100k-commit repository.
+- If the repository folder is unavailable (e.g. an unplugged disk), `first_ref` gives an
+  approximate answer and the user is warned.
+- "Contained in" in the detail panel comes live from `git for-each-ref --contains`.
 
-### 2.2 Artımlı güncelleme ve kaybolan commit'ler
+### 2.2 Incremental updates and lost commits
 
-Güncelleme tarihe göre değil, ref'lere göre yapılır:
+Updates are driven by refs, not dates:
 
-1. Ref'ler okunur (yerel branch, uzak branch, tag, detached HEAD). Parmak izi
-   değişmemişse repo hiç taranmaz.
-2. `eski` = saklı uçlardan hâlâ var olanlar, `yeni` = güncel uçlar.
-3. Yeni commit'ler: `git log yeni --not eski`. Tarihi ne olursa olsun daha önce
-   görülmemiş her commit gelir.
-4. Erişilemez hale gelenler (force-push, rebase, silinen branch):
-   `git rev-list eski --not yeni` → `reachable = 0` olarak işaretlenir, **silinmez**.
-5. Saklı uçlardan biri `git gc` ile silinmişse 4. adım yapılamaz. Bu durumda tam
-   erişilebilirlik taraması yapılır.
-6. Erişilemez bir commit'e tekrar bir branch işaret ederse yeniden `reachable = 1` olur.
+1. Read the refs (local branches, remote branches, tags, detached HEAD). If their
+   fingerprint is unchanged, the repository is skipped entirely.
+2. `old` = stored tips that still exist, `new` = current tips.
+3. New commits: `git log new --not old`. Every commit not seen before arrives, whatever
+   its date.
+4. Commits that became unreachable (force-push, rebase, deleted branch):
+   `git rev-list old --not new` → marked `reachable = 0`, **not deleted**.
+5. If a stored tip was removed by `git gc`, step 4 is impossible; a full reachability pass
+   runs instead.
+6. When a branch points at an unreachable commit again, it becomes `reachable = 1` again.
 
-Erişilemez commit'ler varsayılan olarak aramada gizlidir.
-`unreachable:include|only` filtresiyle veya ayarlardan gösterilebilir. "Saklama"
-seçeneği kapatılırsa bu commit'ler silinir.
+Unreachable commits are hidden in search by default and can be shown with
+`unreachable:include|only` or from Settings. If "keep" is turned off, they are deleted.
 
-### 2.3 Türkçe tam metin arama
+### 2.3 Full-text search normalization
 
-FTS5'in `unicode61` tokenizer'ı I/ı/İ/i dönüşümünü Türkçeye uygun yapmaz ve "odeme" ile
-"ödeme"yi eşleştirmez. Çözüm:
+FTS5's `unicode61` tokenizer case-folds with plain Unicode rules, which are not
+length-preserving for some letters (e.g. dotted capital I), and it does not match
+"cafe" with "Café". Solution:
 
-- Metin indekse girmeden önce `textnorm.normalize` ile normalize edilir: küçük harf,
-  I/ı/İ/i → `i`, aksanlar kaldırılır (ö→o, ş→s, ç→c, ğ→g, ü→u, ß→s…).
-- Normalizasyon **uzunluğu korur** (her karakter tek karaktere dönüşür). Bu sayede eşleşme
-  konumları normalize metinde bulunup orijinal metin üzerinde vurgulanabilir.
-- Sorgu terimleri de aynı fonksiyondan geçer, iki taraf hep tutarlıdır.
-- Tokenizer: `unicode61 remove_diacritics 0 tokenchars '_'`. `snake_case` tek kelime,
-  `JIRA-1234` iki kelime (`"jira 1234"` ifadesi olarak aranır).
-- Kullanıcı girdisi asla doğrudan FTS5'e verilmez. Her terim tırnaklı ifadeye çevrilir,
-  bu yüzden `"`, `*`, `:` gibi karakterler sözdizimi hatası üretemez.
-- Dışlama (`-wip`) FTS5'in `NOT` operatörüyle değil, ayrı bir `NOT IN` alt sorgusuyla
-  yapılır. Böylece tek başına `-wip` de çalışır.
+- Text is normalized with `textnorm.normalize` before it enters the index: lower case,
+  all i variants → `i`, diacritics removed (é→e, ö→o, ß→s, ø→o…).
+- The normalization is **length-preserving** (every character maps to exactly one
+  character), so match positions found in the normalized text can be highlighted in the
+  original text.
+- Query terms go through the same function, so both sides always agree.
+- Tokenizer: `unicode61 remove_diacritics 0 tokenchars '_'`. `snake_case` is one word;
+  `JIRA-1234` is two words (searched as the phrase `"jira 1234"`).
+- User input is never passed straight to FTS5. Every term becomes a quoted phrase, so
+  characters like `"`, `*` or `:` cannot cause syntax errors.
+- Exclusion (`-wip`) uses a separate `NOT IN` sub-query rather than FTS5's `NOT`
+  operator, so a lone `-wip` works too.
 
-### 2.4 Tarih, saat ve saat dilimi
+### 2.4 Dates, hours and time zones
 
-- Hem yazım tarihi (author date) hem commit tarihi (committer date) saklanır: UTC epoch
-  ve commit'in kendi saat dilimi (dakika). Rebase committer date'i değiştirir. Varsayılan
-  filtre ve sıralama yazım tarihine göredir, ayarlardan değiştirilebilir.
-- Saat ve haftanın günü **commit'in kendi saat diliminde** hesaplanıp saklanır
-  (`author_hour`, `author_wday`…). "22:00–06:00 arası commit'ler", yazan kişinin yerel
-  saatine göre çalışır.
-- Tarih filtreleri (bugün, son 7 gün, aralık) **kullanıcının** yerel gününe göre hesaplanır.
-- `after:` dahil, `before:` hariçtir. Arayüzdeki aralık seçimi her iki ucu da dahil eder.
+- Both the author date and the committer date are stored as UTC epoch seconds plus the
+  commit's own time-zone offset (minutes). Rebasing changes the committer date; filters
+  and sorting use the author date by default, configurable in Settings.
+- Hour of day and weekday are computed and stored **in the commit's own time zone**
+  (`author_hour`, `author_wday`…), so "commits between 22:00 and 06:00" follows the
+  author's local clock.
+- Date filters (today, last 7 days, ranges) use the **viewer's** local day.
+- `after:` is inclusive, `before:` is exclusive. Ranges in the UI include both ends.
 
-### 2.5 Repo kimliği
+### 2.5 Repository identity
 
-- Yol değişse bile repo tanınır: yeni bulunan bir repo, kaybolmuş bir reponun kök commit'i
-  (ve gerekirse remote URL'si) ile eşleşirse kayıt yeni yola taşınır, yeniden indekslenmez.
-- Linked worktree'ler ana repo ile aynı ref'leri paylaşır. Bu yüzden ortak git klasörünün
-  (`commondir`) gerçek yoluna göre tekilleştirilir.
-- Submodule'ler (`.git` dosyası → `.git/modules/x`) ayrı repo olarak indekslenir.
-- Bare repolar (`HEAD` + `objects` + `refs`) desteklenir.
-- Klasörü silinen repo `missing` olarak işaretlenir, commit'leri aranabilir kalır. Ayarlardaki
-  kök klasörlerden çıkarılan repolar `inactive` olur. İkisi de Repolar penceresinden kaldırılabilir.
+- A repository is recognized even after it moves: a newly found repository that matches
+  a vanished one by root commit (and remote URL if needed) takes over its record, without
+  re-indexing.
+- Linked worktrees share refs with the main repository, so repositories are
+  de-duplicated by the real path of their common git directory (`commondir`).
+- Submodules (`.git` file → `.git/modules/x`) are indexed as separate repositories.
+- Bare repositories (`HEAD` + `objects` + `refs`) are supported.
+- A repository whose folder was deleted becomes `missing` and its commits stay
+  searchable. Repositories outside the configured root folders become `inactive`. Both
+  can be removed from the Repositories dialog.
 
-### 2.6 Yazar kimliği
+### 2.6 Author identity
 
-- `%aN/%aE` kullanılır, yani reponun `.mailmap` dosyası uygulanır.
-- `Co-authored-by:` satırları ayrıştırılır. `author:` filtresi yazarı ve ortak yazarları
-  birlikte arar (ad veya e-posta, içerir eşleşmesi).
+- `%aN/%aE` are used, so the repository's `.mailmap` is applied.
+- `Co-authored-by:` trailers are parsed. The `author:` filter searches authors and
+  co-authors together (name or e-mail, substring match).
 
-### 2.7 Git çağrılarının güvenliği ve taşınabilirliği
+### 2.7 Safe and portable git calls
 
-`gitcmd` her çağrıda şunları uygular:
+`gitcmd` applies these to every call:
 
-- `-c core.quotepath=off -c i18n.logOutputEncoding=UTF-8`, çıktı `errors="replace"`
-  ile çözülür. Windows'ta Türkçe dosya adları ve mesajlar bozulmaz.
+- `-c core.quotepath=off -c i18n.logOutputEncoding=UTF-8`, output decoded with
+  `errors="replace"`. Non-ASCII file names and messages survive on Windows.
 - `GIT_TERMINAL_PROMPT=0`, `credential.interactive=never`, `GCM_INTERACTIVE=never`.
-  Hiçbir çağrı şifre beklerken takılmaz.
-- `GIT_OPTIONAL_LOCKS=0`. Kullanıcının kendi git komutlarıyla `index.lock` için yarışılmaz.
-- Windows'ta `CREATE_NO_WINDOW`, diğerlerinde ayrı süreç grubu. Zaman aşımında tüm
-  süreç ağacı sonlandırılır.
-- Uzun girdiler (ref listeleri, hash'ler) komut satırı yerine `--stdin` ile verilir.
-  Windows'un 32K komut satırı sınırına takılmaz.
-- Çıktı akış halinde okunur. 1 milyon commit'lik log belleğe toplanmaz.
-- `git` bulunamazsa PATH ve bilinen kurulum yerlerine bakılır, yine yoksa anlaşılır bir
-  uyarı gösterilir. Ayarlardan elle yol verilebilir.
-- PyInstaller ile paketlenen Linux sürümünde `LD_LIBRARY_PATH` git'e ve açılan
-  terminal/editöre aktarılmaz.
+  No call can hang waiting for a password.
+- `GIT_OPTIONAL_LOCKS=0`, so Comitra never races the user's own git commands for
+  `index.lock`.
+- `CREATE_NO_WINDOW` on Windows, a separate process group elsewhere. On timeout the whole
+  process tree is killed.
+- Long inputs (ref lists, hashes) go through `--stdin` instead of the command line, so
+  Windows' 32K command-line limit is never hit.
+- Output is streamed. A one-million-commit log is never held in memory.
+- If `git` is not on PATH, well-known install locations are checked; if it still cannot
+  be found, a clear message is shown. A path can be set manually in Settings.
+- In the PyInstaller Linux build, `LD_LIBRARY_PATH` is not passed on to git or to the
+  terminal/editor that Comitra launches.
 
 ### 2.8 Fetch
 
-Varsayılan kapalıdır. Açıkken:
+Off by default. When enabled:
 
 - `git fetch --all --no-prune --no-recurse-submodules --no-write-fetch-head`
-  (kullanıcının `fetch.prune=true` ayarı da etkisiz kalır).
-- SSH için `BatchMode=yes` (kullanıcının kendi `core.sshCommand` ayarı varsa ona dokunulmaz).
-- Repo başına zaman aşımı, sınırlı paralel fetch, kilit hatasında bir kez yeniden deneme.
-- Hata `auth / network / timeout / lock / error` olarak sınıflandırılır. Tarama yerel
-  verilerle devam eder ve sorun özet ekranında gösterilir.
+  (overrides a user's `fetch.prune=true`).
+- SSH runs with `BatchMode=yes` (unless the user configured their own `core.sshCommand`).
+- Per-repository timeout, a limited number of parallel fetches, one retry on lock errors.
+- Errors are classified as `auth / network / timeout / lock / error`. Indexing continues
+  with local data and the problem is shown in the update report.
 
-### 2.9 Eşzamanlılık
+### 2.9 Concurrency
 
-- İndeksleme `ThreadPoolExecutor` ile paralel çalışır (git alt süreçleri GIL'i tutmaz).
-- Tüm yazmalar tek bir `Writer` nesnesinden, kilit altında ve 2000'lik toplu
-  transaction'larla yapılır. SQLite WAL modundadır.
-- Arayüz: indeksleme `QThread`'de, arama ayrı bir `QThread`'de ve kendi bağlantısıyla çalışır.
-  "En yeni istek kazanır" kuralıyla eski arama sonuçları atılır. Diff, içeren branch'ler,
-  istatistik ve dışa aktarma `QThreadPool` görevleridir. Arayüz hiç donmaz.
+- Indexing runs in parallel with a `ThreadPoolExecutor` (git subprocesses don't hold the GIL).
+- All writes go through a single `Writer` object, under a lock, in batched transactions
+  of 2000 rows. SQLite runs in WAL mode.
+- UI: indexing runs in a `QThread`, searching in another `QThread` with its own
+  connection. "Newest request wins" discards stale search results. Diffs, containing
+  branches, statistics and export are `QThreadPool` tasks. The UI never freezes.
 
-### 2.10 Büyük sonuç listeleri
+### 2.10 Large result lists
 
-Arama, eşleşen tüm commit id'lerini sıralı olarak döndürür (en fazla 2 milyon). Satır
-sayısı kesindir. Tablo modeli satırları 200'lük bloklar halinde, yalnızca görünür
-olduklarında yükler (LRU önbellek). Bu gerçek sanal kaydırmadır. Gruplama aynı id listesi
-üzerinde yapılır.
+A search returns the ordered ids of all matching commits (up to 2 million), so row counts
+are exact. The table model loads rows in blocks of 200, only when they become visible
+(LRU cache) – true virtual scrolling. Grouping works on the same id list.
 
-### 2.11 Şema evrimi
+### 2.11 Schema evolution
 
-`PRAGMA user_version` şema sürümünü tutar. `db.MIGRATIONS` listesine eklenen her adım
-açılışta, transaction içinde sırayla uygulanır. Daha yeni bir şemayı eski bir sürüm
-açmaya çalışırsa anlaşılır bir hata verir.
+`PRAGMA user_version` holds the schema version. Every step appended to `db.MIGRATIONS` is
+applied in order at start-up, inside a transaction. An older build opening a newer
+schema fails with a clear error.
 
-## 3. Veritabanı şeması
+## 3. Database schema
 
-| Tablo | İçerik |
+| Table | Contents |
 | --- | --- |
-| `repos` | yol, ad, git klasörü, bare mı, kök commit, remote URL, durum, ref parmak izi, commit sayısı |
-| `refs` | repo başına izlenen ref'ler ve uç commit'leri |
-| `commits` | hash, ebeveynler, yazar/commit eden, iki tarih + saat dilimi + yerel saat/gün, konu, mesaj, `first_ref`, `reachable` |
-| `coauthors` | `Co-authored-by` kişileri |
-| `paths`, `commit_files` | (isteğe bağlı) değişen dosya yolları; yol sözlüğü sayesinde tekrar yok |
-| `commits_fts` | FTS5, normalize mesaj; `rowid = commits.id` |
-| `saved_searches`, `recent_searches` | kayıtlı ve son aramalar |
+| `repos` | path, name, git dir, bare flag, root commit, remote URL, status, ref fingerprint, commit count |
+| `refs` | tracked refs and their tip commits per repository |
+| `commits` | hash, parents, author/committer, both dates + time zone + local hour/weekday, subject, message, `first_ref`, `reachable` |
+| `coauthors` | `Co-authored-by` people |
+| `paths`, `commit_files` | (optional) changed file paths, de-duplicated through a path dictionary |
+| `commits_fts` | FTS5, normalized message; `rowid = commits.id` |
+| `saved_searches`, `recent_searches` | saved and recent searches |
 
-Diff'ler saklanmaz, detay ekranında Git'ten anlık alınır (2 MB sınırı).
+Diffs are not stored; the detail view fetches them from git on demand (2 MB limit).
 
-## 4. Sorgu dili
+## 4. Query language
 
-`query.parse()` ve `Query.to_string()` birbirinin tersidir (testlerle doğrulanır). Arama
-kutusu ile filtre paneli aynı `Query` nesnesini paylaşır:
+`query.parse()` and `Query.to_string()` are inverses (verified by tests). The search box
+and the filter panel share one `Query` object:
 
-- Kullanıcı arama kutusuna yazar → ayrıştırılır → panel güncellenir (sinyaller susturulur).
-- Kullanıcı panelde değişiklik yapar → `Query` güncellenir → arama kutusu kanonik metne çevrilir.
+- The user types in the search box → parsed → the panel is updated (signals blocked).
+- The user changes the panel → the `Query` is updated → the search box shows the
+  canonical text.
 
-Türkçe takma adlar desteklenir (`yazar:`, `proje:`, `dal:`, `tarih:bugün`, `gün:cuma`,
-`saat:`, `merge:gizle`…). Geçersiz filtreler sessizce yutulmaz, uyarı olarak gösterilir.
+Short aliases are accepted (`a:`, `r:`, `b:`, `d:`, `since:`, `until:`, `weekday:`…).
+Invalid filters are not silently swallowed; they are shown as warnings.
 
-## 5. Gizlilik ve çevrimdışı çalışma
+## 5. Privacy and offline operation
 
-- Uygulama hiçbir ağ isteği yapmaz. Tek istisna, kullanıcının açıkça etkinleştirdiği
-  `git fetch`'tir; o da kullanıcının kendi git sunucularına gider.
-- Telemetri, güncelleme kontrolü veya uzak font/ikon yoktur. Tüm kaynaklar pakettedir.
+- The app makes no network requests. The only exception is `git fetch`, which the user
+  must explicitly enable and which only talks to the user's own git servers.
+- No telemetry, no update check, no remote fonts or icons. All resources are bundled.
 
-## 6. Taşınabilir mod
+## 6. Portable mode
 
-Programın yanında `comitra-portable.txt` dosyası varsa (taşınabilir paketlerde vardır) ya da
-`--portable` / `COMITRA_HOME` kullanılırsa ayarlar ve veritabanı programın yanındaki
-`comitra-data` klasöründe tutulur. Aksi halde platformdirs ile işletim sistemine uygun
-kullanıcı klasörleri kullanılır.
+If a `comitra-portable.txt` file sits next to the program (portable packages include it),
+or `--portable` / `COMITRA_HOME` is used, settings and the database live in a
+`comitra-data` folder next to the program. Otherwise platformdirs picks the right
+per-user folders for the operating system.
 
-## 7. Ölçümler (geliştirme makinesi, Linux)
+## 7. Measurements (development machine, Linux)
 
-| İşlem | Süre |
+| Operation | Time |
 | --- | --- |
-| 100.000 commit'lik repoyu ilk indeksleme | 4,6 sn |
-| Değişmemiş repoyu güncelleme | < 0,05 sn |
-| Tam metin arama (100 bin commit) | ~30 ms |
-| Yazar + tarih + dışlama araması | ~5 ms |
-| `branch:` filtresi, soğuk önbellek | ~1,1 sn |
-| Veritabanı boyutu (100 bin commit) | ~55 MB |
+| First index of a 100,000-commit repository | 4.6 s |
+| Updating an unchanged repository | < 0.05 s |
+| Full-text search (100k commits) | ~30 ms |
+| Author + date + exclusion search | ~5 ms |
+| `branch:` filter, cold cache | ~1.1 s |
+| Database size (100k commits) | ~55 MB |

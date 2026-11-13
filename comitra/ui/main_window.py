@@ -15,7 +15,6 @@ from PySide6.QtWidgets import (
 
 from .. import APP_NAME, config
 from ..core import db, query as querymod, search
-from ..i18n import tr
 from . import actions, dialogs, theme
 from .detail_panel import DetailPanel
 from .filter_panel import FilterPanel
@@ -75,7 +74,7 @@ class MainWindow(QMainWindow):
         v.setContentsMargins(6, 6, 6, 0)
         bar = QHBoxLayout()
         self.search_edit = QLineEdit()
-        self.search_edit.setPlaceholderText(tr('Search commits…  e.g.  author:ahmet branch:feature/* date:7d "payment error" -wip'))
+        self.search_edit.setPlaceholderText('Search commits…  e.g.  author:alice branch:feature/* date:7d "payment error" -wip')
         self.search_edit.setClearButtonEnabled(True)
         f = self.search_edit.font()
         f.setPointSizeF(f.pointSizeF() * 1.15)
@@ -89,21 +88,21 @@ class MainWindow(QMainWindow):
 
         self.sort_combo = QComboBox()
         for key, label in (("", "Auto"), ("newest", "Newest"), ("oldest", "Oldest"), ("relevance", "Relevance")):
-            self.sort_combo.addItem(tr(label), key)
-        self.sort_combo.setToolTip(tr("Sort"))
+            self.sort_combo.addItem(label, key)
+        self.sort_combo.setToolTip("Sort")
         self.sort_combo.currentIndexChanged.connect(self._sort_changed)
         bar.addWidget(self.sort_combo)
 
         self.group_combo = QComboBox()
         for key, label in (("", "No grouping"), ("repo", "Repository"), ("author", "Author"), ("day", "Day")):
-            self.group_combo.addItem(tr(label), key)
-        self.group_combo.setToolTip(tr("Group by"))
+            self.group_combo.addItem(label, key)
+        self.group_combo.setToolTip("Group by")
         self.group_combo.setCurrentIndex(max(0, self.group_combo.findData(self.settings.group_by)))
         self.group_combo.currentIndexChanged.connect(self._group_changed)
         bar.addWidget(self.group_combo)
 
         self.saved_btn = QToolButton(text="★")
-        self.saved_btn.setToolTip(tr("Saved searches"))
+        self.saved_btn.setToolTip("Saved searches")
         self.saved_btn.setPopupMode(QToolButton.InstantPopup)
         self.saved_menu = QMenu(self)
         self.saved_menu.aboutToShow.connect(self._fill_saved_menu)
@@ -111,7 +110,7 @@ class MainWindow(QMainWindow):
         bar.addWidget(self.saved_btn)
 
         help_btn = QToolButton(text="?")
-        help_btn.setToolTip(tr("Query syntax"))
+        help_btn.setToolTip("Query syntax")
         help_btn.clicked.connect(lambda: dialogs.show_syntax(self))
         bar.addWidget(help_btn)
         v.addLayout(bar)
@@ -159,13 +158,13 @@ class MainWindow(QMainWindow):
         welcome = QWidget()
         wl = QVBoxLayout(welcome)
         wl.addStretch(1)
-        title = QLabel(f"<h2>{tr('Welcome to Comitra')}</h2>")
+        title = QLabel("<h2>Welcome to Comitra</h2>")
         title.setAlignment(Qt.AlignCenter)
-        text = QLabel(tr("Add the folders that contain your git repositories. Comitra finds every repository inside them and indexes the commits of all branches. Everything stays on this computer."))
+        text = QLabel("Add the folders that contain your git repositories. Comitra finds every repository inside them and indexes the commits of all branches. Everything stays on this computer.")
         text.setWordWrap(True)
         text.setAlignment(Qt.AlignCenter)
         text.setMaximumWidth(560)
-        btn = QPushButton(tr("Add folder"))
+        btn = QPushButton("Add folder")
         btn.setMinimumHeight(36)
         btn.clicked.connect(self.add_folder)
         wl.addWidget(title)
@@ -183,23 +182,23 @@ class MainWindow(QMainWindow):
         # filter dock
         self.filters = FilterPanel()
         self.filters.changed.connect(self._filters_changed)
-        self.filter_dock = QDockWidget(tr("Filters"), self)
+        self.filter_dock = QDockWidget("Filters", self)
         self.filter_dock.setObjectName("filters")
         self.filter_dock.setWidget(self.filters)
         self.filter_dock.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetClosable)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.filter_dock)
 
         # status bar
-        self.status_label = QLabel(tr("Ready"))
+        self.status_label = QLabel("Ready")
         self.progress = QProgressBar()
         self.progress.setMaximumWidth(220)
         self.progress.setVisible(False)
         self.cancel_btn = QToolButton(text="✕")
-        self.cancel_btn.setToolTip(tr("Cancel update"))
+        self.cancel_btn.setToolTip("Cancel update")
         self.cancel_btn.setVisible(False)
         self.cancel_btn.clicked.connect(self.cancel_update)
         self.report_btn = QToolButton(text="⚠")
-        self.report_btn.setToolTip(tr("Last update report…"))
+        self.report_btn.setToolTip("Last update report…")
         self.report_btn.setVisible(False)
         self.report_btn.clicked.connect(self.show_report)
         sb = self.statusBar()
@@ -209,7 +208,7 @@ class MainWindow(QMainWindow):
         sb.addPermanentWidget(self.cancel_btn)
 
     def _act(self, menu: QMenu, text: str, slot, shortcut=None) -> QAction:
-        a = QAction(tr(text), self)
+        a = QAction(text, self)
         if shortcut is not None:
             if isinstance(shortcut, list):
                 a.setShortcuts(shortcut)
@@ -221,7 +220,7 @@ class MainWindow(QMainWindow):
 
     def _build_menus(self) -> None:
         mb = self.menuBar()
-        m = mb.addMenu(tr("&File"))
+        m = mb.addMenu("&File")
         self._act(m, "Add folder…", self.add_folder)
         m.addSeparator()
         self.act_update = self._act(m, "Update index", lambda: self.start_update(), QKeySequence("F5"))
@@ -234,12 +233,12 @@ class MainWindow(QMainWindow):
         a = self._act(m, "Quit", self.close, QKeySequence.Quit)
         a.setMenuRole(QAction.QuitRole)
 
-        m = mb.addMenu(tr("&Search"))
+        m = mb.addMenu("&Search")
         self._act(m, "Focus search", self.focus_search, [QKeySequence("Ctrl+K"), QKeySequence("Ctrl+F"), QKeySequence("Ctrl+L")])
         self._act(m, "Clear search", self.clear_search)
         self._act(m, "Save search…", self.save_current_search, QKeySequence("Ctrl+S"))
         self._act(m, "Manage saved searches…", self.manage_saved)
-        self.recent_menu = m.addMenu(tr("Recent searches"))
+        self.recent_menu = m.addMenu("Recent searches")
         self.recent_menu.aboutToShow.connect(self._fill_recent_menu)
         m.addSeparator()
         self._act(m, "Copy hash", lambda: self._copy_selected("hash"), QKeySequence("Ctrl+Shift+C"))
@@ -247,36 +246,36 @@ class MainWindow(QMainWindow):
         self._act(m, "Open terminal", lambda: self._selected_action("terminal"), QKeySequence("Ctrl+Shift+T"))
         self._act(m, "Open in editor", lambda: self._selected_action("editor"), QKeySequence("Ctrl+Shift+E"))
 
-        m = mb.addMenu(tr("&View"))
-        gm = m.addMenu(tr("Group by"))
+        m = mb.addMenu("&View")
+        gm = m.addMenu("Group by")
         grp = QActionGroup(self)
         self.group_actions = {}
         for key, label, sc in (("", "No grouping", "Ctrl+0"), ("repo", "Repository", "Ctrl+1"),
                                ("author", "Author", "Ctrl+2"), ("day", "Day", "Ctrl+3")):
-            a = QAction(tr(label), self, checkable=True)
+            a = QAction(label, self, checkable=True)
             a.setShortcut(QKeySequence(sc))
             a.setChecked(key == self.settings.group_by)
             a.triggered.connect(lambda _c=False, k=key: self.group_combo.setCurrentIndex(self.group_combo.findData(k)))
             grp.addAction(a)
             gm.addAction(a)
             self.group_actions[key] = a
-        tm = m.addMenu(tr("Theme"))
+        tm = m.addMenu("Theme")
         tgrp = QActionGroup(self)
         for key, label in (("system", "System"), ("light", "Light"), ("dark", "Dark")):
-            a = QAction(tr(label), self, checkable=True)
+            a = QAction(label, self, checkable=True)
             a.setChecked(self.settings.theme == key)
             a.triggered.connect(lambda _c=False, k=key: self.set_theme(k))
             tgrp.addAction(a)
             tm.addAction(a)
         m.addSeparator()
         fa = self.filter_dock.toggleViewAction()
-        fa.setText(tr("Show filter panel"))
+        fa.setText("Show filter panel")
         m.addAction(fa)
-        self.act_detail = QAction(tr("Show detail panel"), self, checkable=True, checked=True)
+        self.act_detail = QAction("Show detail panel", self, checkable=True, checked=True)
         self.act_detail.toggled.connect(self.detail.setVisible)
         m.addAction(self.act_detail)
 
-        m = mb.addMenu(tr("&Tools"))
+        m = mb.addMenu("&Tools")
         self._act(m, "Repositories…", self.show_repos)
         self._act(m, "Statistics…", self.show_stats)
         self._act(m, "Last update report…", self.show_report)
@@ -286,7 +285,7 @@ class MainWindow(QMainWindow):
             a.setShortcut(QKeySequence("Ctrl+,"))
         a.setMenuRole(QAction.PreferencesRole)
 
-        m = mb.addMenu(tr("&Help"))
+        m = mb.addMenu("&Help")
         self._act(m, "Query syntax", lambda: dialogs.show_syntax(self), QKeySequence.HelpContents)
         self._act(m, "Keyboard shortcuts", lambda: dialogs.show_shortcuts(self))
         a = self._act(m, "About Comitra", lambda: dialogs.show_about(self))
@@ -404,7 +403,7 @@ class MainWindow(QMainWindow):
 
     def _update_counts(self) -> None:
         n, c = self.conn.execute("SELECT COUNT(*), COALESCE(SUM(commit_count),0) FROM repos").fetchone()
-        self.repo_count_text = tr("{n} repositories, {c} commits").format(n=n, c=c)
+        self.repo_count_text = "{n} repositories, {c} commits".format(n=n, c=c)
         if self.index_thread is None or not self.index_thread.isRunning():
             self.status_label.setText(self.repo_count_text)
 
@@ -480,8 +479,8 @@ class MainWindow(QMainWindow):
                     if spans >= 5000:
                         break
         n = len(res.ids)
-        label = tr("{n} results (limit reached)" if res.truncated else "{n} results").format(n=f"{n:,}".replace(",", "."))
-        label += " · " + tr("in {ms} ms").format(ms=int(res.seconds * 1000))
+        label = f"{n:,} results" + (" (limit reached)" if res.truncated else "")
+        label += " · " + "in {ms} ms".format(ms=int(res.seconds * 1000))
         if res.warnings:
             label += " · ⚠ " + "; ".join(res.warnings[:3])
         self.info_label.setText(label)
@@ -562,15 +561,15 @@ class MainWindow(QMainWindow):
             a.triggered.connect(lambda _c=False, text=q: self.set_query_text(text))
         if rows:
             self.recent_menu.addSeparator()
-            a = self.recent_menu.addAction(tr("Clear recent searches"))
+            a = self.recent_menu.addAction("Clear recent searches")
             a.triggered.connect(lambda: self.conn.execute("DELETE FROM recent_searches"))
 
     def _fill_saved_menu(self) -> None:
         m = self.saved_menu
         m.clear()
-        a = m.addAction(tr("Save search…"))
+        a = m.addAction("Save search…")
         a.triggered.connect(self.save_current_search)
-        a = m.addAction(tr("Manage saved searches…"))
+        a = m.addAction("Manage saved searches…")
         a.triggered.connect(self.manage_saved)
         rows = self.conn.execute("SELECT name, query FROM saved_searches ORDER BY name COLLATE NOCASE").fetchall()
         if rows:
@@ -581,7 +580,7 @@ class MainWindow(QMainWindow):
             act.triggered.connect(lambda _c=False, text=q: self.set_query_text(text))
         recent = self.conn.execute("SELECT query FROM recent_searches ORDER BY used_at DESC LIMIT 8").fetchall()
         if recent:
-            m.addSection(tr("Recent searches"))
+            m.addSection("Recent searches")
             for (q,) in recent:
                 act = m.addAction(q if len(q) < 70 else q[:67] + "…")
                 act.triggered.connect(lambda _c=False, text=q: self.set_query_text(text))
@@ -598,7 +597,7 @@ class MainWindow(QMainWindow):
 
     # -- indexing -------------------------------------------------------------------
     def add_folder(self) -> None:
-        d = QFileDialog.getExistingDirectory(self, tr("Choose a folder with git repositories"), os.path.expanduser("~"))
+        d = QFileDialog.getExistingDirectory(self, "Choose a folder with git repositories", os.path.expanduser("~"))
         if not d:
             return
         d = os.path.normpath(d)
@@ -615,13 +614,13 @@ class MainWindow(QMainWindow):
             return
         if self.index_thread is not None and self.index_thread.isRunning():
             if not quiet:
-                self.statusBar().showMessage(tr("An update is already running."), 4000)
+                self.statusBar().showMessage("An update is already running.", 4000)
             return
         self._start_thread(IndexThread(self.settings, mode="scan", force_full=force_full, fetch=fetch), quiet=quiet)
 
     def reindex_repos(self, ids: set[int]) -> None:
         if self.index_thread is not None and self.index_thread.isRunning():
-            self.statusBar().showMessage(tr("An update is already running."), 4000)
+            self.statusBar().showMessage("An update is already running.", 4000)
             return
         self._start_thread(IndexThread(self.settings, mode="known", force_full=True, repo_ids=ids), quiet=False)
 
@@ -641,11 +640,11 @@ class MainWindow(QMainWindow):
     def _on_index_progress(self, phase: str, done: int, total: int, cur: str) -> None:
         if phase == "scan":
             self.progress.setRange(0, 0)
-            self.status_label.setText(tr("Scanning folders… {cur}").format(cur=_short(cur)))
+            self.status_label.setText("Scanning folders… {cur}".format(cur=_short(cur)))
         else:
             self.progress.setRange(0, max(1, total))
             self.progress.setValue(done)
-            self.status_label.setText(tr("Indexing {done}/{total}: {cur}").format(done=done, total=total, cur=cur))
+            self.status_label.setText("Indexing {done}/{total}: {cur}".format(done=done, total=total, cur=cur))
 
     def _on_index_done(self, report, err: str, quiet: bool) -> None:
         self.progress.setVisible(False)
@@ -654,14 +653,14 @@ class MainWindow(QMainWindow):
         if th is not None:
             th.deleteLater()
         if err == "git-not-found":
-            self.status_label.setText(tr("git was not found"))
-            QMessageBox.warning(self, tr("git was not found"),
-                                tr("Comitra needs git. Install it from https://git-scm.com (or with your package manager) and restart, or set the path to git in Settings."))
+            self.status_label.setText("git was not found")
+            QMessageBox.warning(self, "git was not found",
+                                "Comitra needs git. Install it from https://git-scm.com (or with your package manager) and restart, or set the path to git in Settings.")
             return
         if err:
-            self.status_label.setText(f"{tr('Error')}: {err}")
+            self.status_label.setText(f"Error: {err}")
             if not quiet:
-                QMessageBox.warning(self, tr("Error"), err)
+                QMessageBox.warning(self, "Error", err)
             return
         self.last_report = report
         sm = report.summary
@@ -670,15 +669,15 @@ class MainWindow(QMainWindow):
         self._setup_watcher()
         self._update_central()
         if sm.cancelled:
-            self.status_label.setText(tr("Update cancelled"))
+            self.status_label.setText("Update cancelled")
         else:
-            msg = tr("Index updated: {new} new commits in {secs:.1f}s").format(new=sm.new_commits, secs=sm.seconds)
+            msg = "Index updated: {new} new commits in {secs:.1f}s".format(new=sm.new_commits, secs=sm.seconds)
             self.status_label.setText(f"{self.repo_count_text} · {msg}")
         problems = sm.count("error") + sm.count("missing") + len(sm.fetch_problems) + len(report.scan.errors)
         self.report_btn.setVisible(problems > 0)
         if problems:
             self.report_btn.setToolTip(
-                tr("{u} updated, {s} unchanged, {e} errors, {m} missing, {f} fetch problems").format(
+                "{u} updated, {s} unchanged, {e} errors, {m} missing, {f} fetch problems".format(
                     u=sm.count("updated"), s=sm.count("unchanged"), e=sm.count("error"), m=sm.count("missing"),
                     f=len(sm.fetch_problems)))
         if sm.new_commits or sm.count("updated") or any(r.unreachable for r in sm.results):
@@ -695,7 +694,7 @@ class MainWindow(QMainWindow):
     # -- actions on results -------------------------------------------------------------
     def _copy(self, text: str) -> None:
         QGuiApplication.clipboard().setText(text)
-        self.statusBar().showMessage(tr("Hash copied") if len(text) == 40 else tr("Copy message"), 2000)
+        self.statusBar().showMessage("Hash copied" if len(text) == 40 else "Copied to clipboard", 2000)
 
     def _selected_rows(self) -> list:
         rows = []
@@ -724,7 +723,7 @@ class MainWindow(QMainWindow):
             elif kind == "editor":
                 actions.open_editor(path, self.settings.editor_command)
         except Exception as exc:
-            QMessageBox.warning(self, APP_NAME, tr("Could not open: {err}").format(err=exc))
+            QMessageBox.warning(self, APP_NAME, "Could not open: {err}".format(err=exc))
 
     def _context_menu(self, pos) -> None:
         idx = self.table.indexAt(pos)
@@ -732,17 +731,17 @@ class MainWindow(QMainWindow):
         if r is None:
             return
         m = QMenu(self)
-        m.addAction(tr("Copy hash"), lambda: self._copy_selected("hash"))
-        m.addAction(tr("Copy message"), lambda: self._copy_selected("message"))
+        m.addAction("Copy hash", lambda: self._copy_selected("hash"))
+        m.addAction("Copy message", lambda: self._copy_selected("message"))
         m.addSeparator()
-        m.addAction(tr("Open folder"), lambda: self._do_action("folder", r["repo_path"]))
-        m.addAction(tr("Open terminal"), lambda: self._do_action("terminal", r["repo_path"]))
-        m.addAction(tr("Open in editor"), lambda: self._do_action("editor", r["repo_path"]))
+        m.addAction("Open folder", lambda: self._do_action("folder", r["repo_path"]))
+        m.addAction("Open terminal", lambda: self._do_action("terminal", r["repo_path"]))
+        m.addAction("Open in editor", lambda: self._do_action("editor", r["repo_path"]))
         m.addSeparator()
-        m.addAction(f"{tr('Author')}: {r['author_name']}", lambda: self._add_filter("authors", r["author_email"]))
-        m.addAction(f"{tr('Repository')}: {r['repo_name']}", lambda: self._add_filter("repos", r["repo_name"]))
+        m.addAction(f"Author: {r['author_name']}", lambda: self._add_filter("authors", r["author_email"]))
+        m.addAction(f"Repository: {r['repo_name']}", lambda: self._add_filter("repos", r["repo_name"]))
         if r["first_ref"]:
-            m.addAction(f"{tr('Branch')}: {r['first_ref']}", lambda: self._add_filter("branches", r["first_ref"]))
+            m.addAction(f"Branch: {r['first_ref']}", lambda: self._add_filter("branches", r["first_ref"]))
         m.exec(self.table.viewport().mapToGlobal(pos))
 
     def _add_filter(self, field: str, value: str) -> None:
@@ -756,10 +755,10 @@ class MainWindow(QMainWindow):
     # -- dialogs -----------------------------------------------------------------------
     def export(self) -> None:
         if not self.last_result or not self.last_result.ids:
-            QMessageBox.information(self, tr("Export"), tr("No results"))
+            QMessageBox.information(self, "Export", "No results")
             return
         path, flt = QFileDialog.getSaveFileName(
-            self, tr("Export results…"), os.path.join(os.path.expanduser("~"), "comitra-results.csv"),
+            self, "Export results…", os.path.join(os.path.expanduser("~"), "comitra-results.csv"),
             "CSV (*.csv);;JSON (*.json)")
         if not path:
             return
@@ -771,10 +770,10 @@ class MainWindow(QMainWindow):
         ids = list(self.last_result.ids)
         t = Task("export", export_results, fmt, ids, path)
         t.signals.done.connect(lambda _k, n: QMessageBox.information(
-            self, tr("Export"), tr("Exported {n} commits to {path}").format(n=n, path=path)))
-        t.signals.failed.connect(lambda _k, e: QMessageBox.warning(self, tr("Export"), tr("Export failed: {err}").format(err=e)))
+            self, "Export", "Exported {n} commits to {path}".format(n=n, path=path)))
+        t.signals.failed.connect(lambda _k, e: QMessageBox.warning(self, "Export", "Export failed: {err}".format(err=e)))
         self._keep(t)
-        self.statusBar().showMessage(tr("Export") + "…", 3000)
+        self.statusBar().showMessage("Export" + "…", 3000)
         QThreadPool.globalInstance().start(t)
 
     def show_settings(self) -> None:

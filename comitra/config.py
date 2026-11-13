@@ -114,7 +114,6 @@ class Settings:
     terminal_command: str = ""   # "" = auto; may contain {path}
     editor_command: str = ""     # "" = auto (VS Code if found); may contain {path}
     theme: str = "system"        # system | light | dark
-    language: str = "auto"       # auto | tr | en
 
     window_geometry: str = ""
     window_state: str = ""
