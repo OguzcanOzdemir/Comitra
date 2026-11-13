@@ -1,13 +1,22 @@
 name: Release
 
-# Push a tag like v1.0.0 to build installers and portable packages for
-# Windows, macOS (Apple Silicon and Intel) and Linux and attach them to a
-# GitHub release.  Can also be started by hand from the Actions tab.
+# Builds installers and portable packages for Windows, macOS (Apple Silicon
+# and Intel) and Linux and attaches them to a GitHub release. Either push a tag
+# like v1.0.0, or start it from the Actions tab ("Run workflow") and enter the
+# tag - the tag and the release are then created on the selected commit.
 
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create, e.g. v1.0.0 (leave empty to only build)"
+        required: false
+        default: ""
+
+env:
+  RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
 
 permissions:
   contents: write
@@ -61,9 +70,14 @@ jobs:
     needs: build
     # Run even if the optional Intel Mac build failed; the file check below
     # makes sure every required package is present before anything is published.
-    if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/v') }}
+    if: ${{ !cancelled() && startsWith(github.ref_type == 'tag' && github.ref_name || inputs.tag, 'v') }}
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - name: Check the tag matches the app version
+        run: |
+          v=$(python3 -c "import re;print(re.search(r'__version__ = \"(.+?)\"', open('comitra/__init__.py').read()).group(1))")
+          test "v$v" = "$RELEASE_TAG" || { echo "::error::tag $RELEASE_TAG does not match version $v"; exit 1; }
       - uses: actions/download-artifact@v4
         with:
           path: release
@@ -83,7 +97,9 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: release/*
-          name: Comitra ${{ github.ref_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          target_commitish: ${{ github.sha }}
+          name: Comitra ${{ env.RELEASE_TAG }}
           generate_release_notes: true
           body: |
             ## Download
