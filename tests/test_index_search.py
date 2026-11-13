@@ -8,6 +8,17 @@ from comitra.core.search import SearchOptions
 from comitra.core.service import update_index, update_known_repos
 
 
+def rmtree(path):
+    """shutil.rmtree that also removes git's read-only object files on Windows."""
+    import stat
+
+    def onerror(func, p, _exc):
+        os.chmod(p, stat.S_IWRITE)
+        func(p)
+
+    shutil.rmtree(path, onerror=onerror)
+
+
 def run(conn, settings, **kw):
     return update_index(conn, settings, **kw)
 
@@ -190,7 +201,7 @@ def test_missing_repo_marked(conn, settings, make_repo):
     r = make_repo()
     r.commit("x")
     run(conn, settings)
-    shutil.rmtree(r.path)
+    rmtree(r.path)
     run(conn, settings)
     assert conn.execute("SELECT status FROM repos").fetchone()[0] == "missing"
     # Data stays searchable.
