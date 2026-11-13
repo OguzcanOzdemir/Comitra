@@ -177,8 +177,12 @@ Output goes to `dist/release/`. Each platform's packages are built on that platf
 - **Linux:** PyInstaller → portable `tar.gz`, `appimagetool` → `AppImage`
 
 GitHub Actions does this automatically: every push runs the tests on all three operating
-systems and builds the packages as artifacts (`.github/workflows/ci.yml`). Pushing a tag
-such as `v1.2.3` attaches every package to a GitHub Release (`release.yml`).
+systems and builds the packages as artifacts (`.github/workflows/ci.yml`).
+
+**Publishing a release:** set the new version in `comitra/__init__.py` (`__version__`) and
+push it to the default branch. `release.yml` notices that the tag `v<version>` does not
+exist yet, builds every package, creates the tag and publishes the GitHub Release with
+`SHA256SUMS.txt`. The website's download buttons then serve the new files automatically.
 
 ## Project layout
 

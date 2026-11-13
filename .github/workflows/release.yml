@@ -1,13 +1,21 @@
 name: Release
 
 # Builds installers and portable packages for Windows, macOS (Apple Silicon
-# and Intel) and Linux and attaches them to a GitHub release. Either push a tag
-# like v1.0.0, or start it from the Actions tab ("Run workflow") and enter the
-# tag - the tag and the release are then created on the selected commit.
+# and Intel) and Linux and publishes them as a GitHub release.
+#
+# How to release: set the new version in comitra/__init__.py (__version__)
+# and push it to the default branch. If no tag v<version> exists yet, this
+# workflow builds everything, creates the tag and publishes the release.
+# Pushing a v* tag yourself, or "Run workflow" in the Actions tab with a
+# tag, works too.
 
 on:
   push:
+    branches: ["**"]
     tags: ["v*"]
+    paths:
+      - "comitra/__init__.py"
+      - ".github/workflows/release.yml"
   workflow_dispatch:
     inputs:
       tag:
@@ -15,15 +23,60 @@ on:
         required: false
         default: ""
 
-env:
-  RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
-
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
+  prepare:
+    name: Decide what to release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.decide.outputs.tag }}
+      release: ${{ steps.decide.outputs.release }}
+      build: ${{ steps.decide.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          version=$(python3 -c "import re;print(re.search(r'__version__ = \"(.+?)\"', open('comitra/__init__.py').read()).group(1))")
+          release=false; build=false; tag=""
+          if [ "$REF_TYPE" = "tag" ]; then
+            tag="$REF_NAME"; release=true; build=true
+          elif [ "$EVENT" = "workflow_dispatch" ]; then
+            build=true
+            if [ -n "$INPUT_TAG" ]; then tag="$INPUT_TAG"; release=true; fi
+          elif [ "$REF_NAME" = "$DEFAULT_BRANCH" ]; then
+            tag="v$version"
+            # Only release a version once: skip if its tag already exists.
+            if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+              echo "Tag $tag already exists - nothing to release."
+            else
+              release=true; build=true
+            fi
+          fi
+          if [ "$release" = true ] && [ "$tag" != "v$version" ]; then
+            echo "::error::tag $tag does not match comitra.__version__ $version"; exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+          echo "version=$version tag=$tag release=$release build=$build"
+
   build:
     name: Build (${{ matrix.os }})
+    needs: prepare
+    if: needs.prepare.outputs.build == 'true'
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.optional }}
     strategy:
@@ -67,17 +120,12 @@ jobs:
 
   publish:
     name: Publish release
-    needs: build
+    needs: [prepare, build]
     # Run even if the optional Intel Mac build failed; the file check below
     # makes sure every required package is present before anything is published.
-    if: ${{ !cancelled() && startsWith(github.ref_type == 'tag' && github.ref_name || inputs.tag, 'v') }}
+    if: ${{ !cancelled() && needs.prepare.outputs.release == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Check the tag matches the app version
-        run: |
-          v=$(python3 -c "import re;print(re.search(r'__version__ = \"(.+?)\"', open('comitra/__init__.py').read()).group(1))")
-          test "v$v" = "$RELEASE_TAG" || { echo "::error::tag $RELEASE_TAG does not match version $v"; exit 1; }
       - uses: actions/download-artifact@v4
         with:
           path: release
@@ -97,9 +145,10 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: release/*
-          tag_name: ${{ env.RELEASE_TAG }}
+          tag_name: ${{ needs.prepare.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          name: Comitra ${{ env.RELEASE_TAG }}
+          name: Comitra ${{ needs.prepare.outputs.tag }}
+          make_latest: "true"
           generate_release_notes: true
           body: |
             ## Download
