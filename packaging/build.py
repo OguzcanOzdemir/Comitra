@@ -5,10 +5,14 @@
 
 Output goes to ``dist/release``:
 
-* Windows: ``Comitra-<ver>-windows-x64-setup.exe`` (Inno Setup, per-user, no
-  admin rights) and ``Comitra-<ver>-windows-x64-portable.zip``
-* macOS:   ``Comitra-<ver>-macos-<arch>.dmg`` and ``…-portable.zip``
-* Linux:   ``Comitra-<ver>-linux-x86_64.AppImage`` and ``…-portable.tar.gz``
+* Windows: ``Comitra-windows-x64-setup.exe`` (Inno Setup, per-user, no
+  admin rights) and ``Comitra-windows-x64-portable.zip``
+* macOS:   ``Comitra-macos-<arch>.dmg`` and ``…-portable.zip``
+* Linux:   ``Comitra-linux-x86_64.AppImage`` and ``…-portable.tar.gz``
+
+File names carry no version so that
+``https://github.com/<owner>/<repo>/releases/latest/download/<file>`` always
+points at the newest release (the website links there directly).
 
 Portable packages contain ``comitra-portable.txt`` next to the program, which
 makes Comitra keep its settings and database in ``comitra-data`` beside it.
@@ -96,7 +100,7 @@ def find_iscc() -> str | None:
 
 def package_windows(skip_installer: bool) -> None:
     app_dir = os.path.join(DIST, "Comitra")
-    name = f"Comitra-{__version__}-windows-{arch()}"
+    name = f"Comitra-windows-{arch()}"
     zip_dir(app_dir, os.path.join(OUT, f"{name}-portable.zip"), "Comitra",
             {"comitra-portable.txt": PORTABLE_NOTE})
     if skip_installer:
@@ -114,7 +118,7 @@ def package_windows(skip_installer: bool) -> None:
 
 def package_macos(skip_installer: bool) -> None:
     app = os.path.join(DIST, "Comitra.app")
-    name = f"Comitra-{__version__}-macos-{arch()}"
+    name = f"Comitra-macos-{arch()}"
     # Ad-hoc signature so Apple Silicon accepts the bundle (no developer ID needed).
     subprocess.run(["codesign", "--force", "--deep", "--sign", "-", app], check=False)
     stage = os.path.join(DIST, "portable-mac")
@@ -162,7 +166,7 @@ def _appimagetool() -> str | None:
 
 def package_linux(skip_installer: bool) -> None:
     app_dir = os.path.join(DIST, "Comitra")
-    name = f"Comitra-{__version__}-linux-{platform.machine()}"
+    name = f"Comitra-linux-{platform.machine()}"
     lin = os.path.join(HERE, "linux")
     # portable tar.gz (+ optional desktop integration script)
     tgz = os.path.join(OUT, f"{name}-portable.tar.gz")

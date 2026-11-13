@@ -135,9 +135,26 @@ T = {
 }
 
 
+# Release files have stable names (see packaging/build.py), so these links
+# always download the newest release - no JavaScript or API call needed.
+ASSET_FILES = {
+    "windows-setup": "Comitra-windows-x64-setup.exe",
+    "windows-portable": "Comitra-windows-x64-portable.zip",
+    "macos-arm64": "Comitra-macos-arm64.dmg",
+    "macos-x64": "Comitra-macos-x64.dmg",
+    "macos-portable": "Comitra-macos-arm64-portable.zip",
+    "linux-appimage": "Comitra-linux-x86_64.AppImage",
+    "linux-portable": "Comitra-linux-x86_64-portable.tar.gz",
+}
+
+
+def asset_url(asset: str) -> str:
+    return f"{REPO}/releases/latest/download/{ASSET_FILES[asset]}"
+
+
 def asset_btn(asset: str, label: str, primary: bool = False) -> str:
     cls = "btn btn-primary" if primary else "btn btn-ghost"
-    return (f'<a class="{cls}" href="{LATEST}" data-asset="{asset}" rel="nofollow">{icon("download")}'
+    return (f'<a class="{cls}" href="{asset_url(asset)}" data-asset="{asset}" rel="nofollow">{icon("download")}'
             f"<span>{label}</span> <small></small></a>")
 
 
@@ -184,7 +201,7 @@ def page(lang: str) -> str:
             "license": "https://opensource.org/licenses/MIT",
             "isAccessibleForFree": True,
             "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
-            "downloadUrl": LATEST,
+            "downloadUrl": [asset_url(k) for k in ("windows-setup", "macos-arm64", "linux-appimage")],
             "installUrl": t["url"] + "#" + anchors[3],
             "url": t["url"],
             "image": BASE + "assets/icon-512.png",

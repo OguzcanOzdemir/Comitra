@@ -1,11 +1,12 @@
-// Detects the visitor's OS, highlights the matching download and fills the
-// download buttons with direct links to the latest GitHub release assets.
-// Without JavaScript (or if the API is unreachable) every button still
-// points to the latest release page, so nothing breaks.
+// Detects the visitor's OS, highlights the matching download and points the
+// hero button at it. Download links are static (releases/latest/download/…)
+// and work without JavaScript; the GitHub API is only used to show file
+// sizes and the version, and to hide files missing from the latest release.
 (function () {
   "use strict";
   var REPO = "OguzcanOzdemir/Comitra";
   var LATEST = "https://github.com/" + REPO + "/releases/latest";
+  var HERO_ASSET = { windows: "windows-setup", macos: "macos-arm64", linux: "linux-appimage" };
 
   function detectOS() {
     var ua = navigator.userAgent || "";
@@ -36,7 +37,11 @@
   if (os) {
     var card = document.getElementById("dl-" + os);
     if (card) card.classList.add("recommended");
-    if (hero) hero.querySelector("span").textContent = labels[os];
+    if (hero) {
+      hero.querySelector("span").textContent = labels[os];
+      var link = document.querySelector('[data-asset="' + HERO_ASSET[os] + '"]');
+      if (link) hero.href = link.href;
+    }
   }
 
   if (!window.fetch) return;
@@ -56,14 +61,11 @@
           a.href = asset.browser_download_url;
           var s = a.querySelector("small");
           if (s) s.textContent = fmtSize(asset.size);
-        } else if (a.getAttribute("data-asset") === "macos-x64") {
-          a.style.display = "none";
+        } else if (assets.length && a.getAttribute("data-asset") === "macos-x64") {
+          a.style.display = "none";  // optional Intel build missing from this release
         }
       });
-      if (hero && os) {
-        var heroKey = { windows: "windows-setup", macos: "macos-arm64", linux: "linux-appimage" }[os];
-        if (found[heroKey]) hero.href = found[heroKey].browser_download_url;
-      }
+
       var info = document.getElementById("release-info");
       if (info && rel.tag_name) {
         var date = rel.published_at ? new Date(rel.published_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "";

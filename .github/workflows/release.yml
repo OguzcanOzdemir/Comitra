@@ -59,14 +59,44 @@ jobs:
   publish:
     name: Publish release
     needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Run even if the optional Intel Mac build failed; the file check below
+    # makes sure every required package is present before anything is published.
+    if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: release
           merge-multiple: true
+      - name: Check required packages
+        run: |
+          set -e
+          cd release
+          ls -la
+          for f in Comitra-windows-x64-setup.exe Comitra-windows-x64-portable.zip \
+                   Comitra-macos-arm64.dmg Comitra-macos-arm64-portable.zip \
+                   Comitra-linux-x86_64.AppImage Comitra-linux-x86_64-portable.tar.gz; do
+            test -s "$f" || { echo "::error::missing $f"; exit 1; }
+          done
+          sha256sum Comitra-* > SHA256SUMS.txt
+          cat SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2
         with:
           files: release/*
+          name: Comitra ${{ github.ref_name }}
           generate_release_notes: true
+          body: |
+            ## Download
+
+            | Platform | Installer | Portable |
+            | --- | --- | --- |
+            | Windows 10/11 (x64) | **Comitra-windows-x64-setup.exe** | Comitra-windows-x64-portable.zip |
+            | macOS 11+ (Apple Silicon) | **Comitra-macos-arm64.dmg** | Comitra-macos-arm64-portable.zip |
+            | macOS 11+ (Intel) | Comitra-macos-x64.dmg (if listed below) | Comitra-macos-x64-portable.zip |
+            | Linux (x86_64) | **Comitra-linux-x86_64.AppImage** | Comitra-linux-x86_64-portable.tar.gz |
+
+            Comitra needs [git](https://git-scm.com/downloads). The packages are not code-signed yet:
+            on Windows choose *More info → Run anyway*, on macOS right-click the app and choose *Open*,
+            on Linux run `chmod +x Comitra-linux-x86_64.AppImage`. Verify downloads with `SHA256SUMS.txt`.
+
+            Website: https://oguzcanozdemir.github.io/Comitra/

@@ -46,9 +46,12 @@ Ready-made packages are on the [Releases](../../releases) page:
 
 | Platform | Installer | Portable |
 | --- | --- | --- |
-| Windows 10/11 (x64) | `Comitra-…-windows-x64-setup.exe` (no admin rights needed) | `Comitra-…-windows-x64-portable.zip` |
-| macOS 11+ (Apple Silicon / Intel) | `Comitra-…-macos-arm64.dmg` / `…-x64.dmg` | `Comitra-…-macos-…-portable.zip` |
-| Linux (x86_64) | `Comitra-…-linux-x86_64.AppImage` | `Comitra-…-linux-x86_64-portable.tar.gz` |
+| Windows 10/11 (x64) | [`Comitra-windows-x64-setup.exe`](../../releases/latest/download/Comitra-windows-x64-setup.exe) (no admin rights needed) | [`Comitra-windows-x64-portable.zip`](../../releases/latest/download/Comitra-windows-x64-portable.zip) |
+| macOS 11+ (Apple Silicon) | [`Comitra-macos-arm64.dmg`](../../releases/latest/download/Comitra-macos-arm64.dmg) | [`Comitra-macos-arm64-portable.zip`](../../releases/latest/download/Comitra-macos-arm64-portable.zip) |
+| macOS 11+ (Intel) | [`Comitra-macos-x64.dmg`](../../releases/latest/download/Comitra-macos-x64.dmg) (when available) | [`Comitra-macos-x64-portable.zip`](../../releases/latest/download/Comitra-macos-x64-portable.zip) |
+| Linux (x86_64) | [`Comitra-linux-x86_64.AppImage`](../../releases/latest/download/Comitra-linux-x86_64.AppImage) | [`Comitra-linux-x86_64-portable.tar.gz`](../../releases/latest/download/Comitra-linux-x86_64-portable.tar.gz) |
+
+Each release also contains `SHA256SUMS.txt` to verify the downloads.
 
 - **Windows:** run the installer. If SmartScreen warns you, choose *More info → Run anyway*
   (the package is not code-signed). For the portable edition, unzip it and run `Comitra.exe`.
