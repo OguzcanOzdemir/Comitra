@@ -25,7 +25,7 @@ jobs:
             optional: false
           - os: windows-latest
             optional: false
-          - os: macos-14          # Apple Silicon
+          - os: macos-latest      # Apple Silicon
             optional: false
           - os: macos-15-intel    # Intel Macs
             optional: true
