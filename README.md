@@ -2,6 +2,8 @@
 
 **Bilgisayarınızdaki tüm git repolarında, tüm branch'lerdeki commit'leri tek yerden arayın.**
 
+🌐 **Web sitesi ve indirmeler:** <https://oguzcanozdemir.github.io/Comitra/> · [English](https://oguzcanozdemir.github.io/Comitra/en/)
+
 Comitra; Windows, macOS ve Linux'ta çalışan, tamamen çevrimdışı bir masaüstü
 uygulamasıdır. Seçtiğiniz klasörlerdeki git repolarını bulur, commit'leri yerel bir
 SQLite veritabanına indeksler ve milisaniyeler içinde arama yapmanızı sağlar.
@@ -181,6 +183,7 @@ comitra/
   i18n.py        Türkçe/İngilizce metinler
 packaging/       PyInstaller spec, Inno Setup, AppImage, derleme betiği
 tests/           pytest testleri (gerçek git repolarıyla)
+site/            GitHub Pages web sitesi (tools/build_site.py ile üretilir)
 docs/DESIGN.md   tasarım kararları
 TASKS.md         görev listesi ve yol haritası
 ```

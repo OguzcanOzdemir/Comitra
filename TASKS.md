@@ -58,14 +58,21 @@ Durum: ✅ tamamlandı · 🔜 sıradaki · 💡 fikir
 - ✅ GitHub Actions: 3 işletim sistemi × 2 Python sürümünde test ve paket üretimi
 - ✅ Tag ile otomatik GitHub Release
 
-## 5. Kalite
+## 5. Web sitesi
+
+- ✅ GitHub Pages tanıtım sitesi (Türkçe + İngilizce, `tools/build_site.py` ile tek şablondan)
+- ✅ İşletim sistemini algılayıp doğru indirme butonunu öne çıkarma, son sürüm dosyalarına doğrudan link
+- ✅ SEO: başlık/açıklama, canonical, hreflang, Open Graph/Twitter kartı, JSON-LD (SoftwareApplication, FAQPage), sitemap.xml, robots.txt
+- 🔜 Google Search Console doğrulaması ve sitemap gönderimi (repo sahibi yapmalı)
+
+## 6. Kalite
 
 - ✅ Birim testleri: normalizasyon, sorgu dili
 - ✅ Gerçek git repolarıyla entegrasyon testleri: fast-forward merge, force-push, gc, worktree, bare, taşınan repo, fetch başarı ve hata, dosya, saat ve gün filtreleri
 - ✅ Ekransız arayüz duman testi
 - ✅ 100 bin commit ile performans ölçümü (bkz. `docs/DESIGN.md`)
 
-## 6. Sonraki sürümler
+## 7. Sonraki sürümler
 
 - 🔜 Kod imzalama: Windows Authenticode ve Apple Developer ID + notarization (sertifika gerektirir)
 - 🔜 Diff içeriğinde arama (isteğe bağlı; ayrı bir FTS tablosu ve boyut sınırıyla)
