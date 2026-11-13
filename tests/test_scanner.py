@@ -19,7 +19,11 @@ def test_auto_discovery_scans_home(tmp_path, monkeypatch, make_repo):
     assert os.path.normpath(str(home)) in [os.path.normpath(r) for r in s.scan_roots()]
 
     rep = scanner.scan(s.scan_roots(), excludes=s.exclude_names, skip_hidden=s.skip_hidden)
-    found = sorted(os.path.relpath(r.path, home).replace(os.sep, "/") for r in rep.repos)
+    # On Windows other fixed drives are scanned too (e.g. the CI checkout on D:);
+    # only look at what was found inside the fake home folder.
+    home_s = os.path.normcase(os.path.normpath(str(home)))
+    inside = [r.path for r in rep.repos if os.path.normcase(os.path.normpath(r.path)).startswith(home_s + os.sep)]
+    found = sorted(os.path.relpath(p, home).replace(os.sep, "/") for p in inside)
     assert found == ["Documents/client/site", "projects/api"]
 
     rep = scanner.scan([str(home)], excludes=s.exclude_names, skip_hidden=False)
